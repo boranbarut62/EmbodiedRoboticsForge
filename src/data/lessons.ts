@@ -739,4 +739,363 @@ export const lessons: Lesson[] = [
       },
     ],
   },
+
+  {
+    id: 'pwm-control',
+    stageId: 'embedded-systems',
+    title: 'PWM: Digital Control of Analog-ish Power',
+    hook: "A microcontroller pin can only be fully on or fully off — yet somehow it dims an LED smoothly and controls a motor's speed continuously. PWM is the trick that makes that possible.",
+    objectives: [
+      "Explain why digital output pins can't directly produce a variable analog voltage.",
+      'Predict what happens to average voltage as duty cycle changes, before testing it.',
+      'Compute average voltage from duty cycle and supply voltage.',
+      'Explain why rapid switching is perceived as a steady, intermediate value.',
+      'Connect PWM to the motor driver from the motor-to-joint lesson.',
+    ],
+    sections: [
+      {
+        type: 'text',
+        kind: 'intuition',
+        heading: 'Why Not Just Use a Lower Voltage?',
+        body: [
+          "A microcontroller's GPIO pin is fundamentally digital: it can only output its full supply voltage (HIGH) or 0V (LOW), never something in between. But motors need variable speed and LEDs need variable brightness — so how does a microcontroller control either one smoothly?",
+          'The trick is Pulse Width Modulation (PWM): instead of holding a constant intermediate voltage, the pin switches rapidly between fully on and fully off. By controlling the fraction of time spent HIGH versus LOW — the duty cycle — you control the effective average power delivered, without ever using an in-between voltage.',
+        ],
+      },
+      {
+        type: 'interactive',
+        heading: 'PWM Lab',
+        component: 'PWMLab',
+        caption: "Adjust duty cycle and watch the LED's apparent brightness track the average of the rapid on/off signal shown in the graph.",
+      },
+      {
+        type: 'exercise',
+        heading: 'Predict First',
+        exerciseId: 'pwm-predict',
+      },
+      {
+        type: 'key-concepts',
+        heading: 'Key Concepts',
+        items: [
+          'Duty cycle: fraction of each cycle spent HIGH',
+          'PWM frequency: how many on/off cycles occur per second',
+          'Average voltage = duty cycle × supply voltage',
+          "A physical system's inertia acts as a natural low-pass filter, smoothing rapid switching into a steady effect",
+          'PWM is how almost every motor driver and dimmable LED circuit works',
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'derivation',
+        heading: 'Why Rapid Switching Looks Analog',
+        body: [
+          "Neither an LED's perceived brightness nor a motor's speed can change instantaneously — the human eye integrates light over time, and a motor's inertia prevents its speed from following each individual pulse. Both effectively average the rapid on/off signal over a short window, exactly the exponential smoothing shown by the glowing circle in the lab above.",
+          'As long as the PWM frequency is fast enough that a full on/off cycle happens well within that averaging window, only the average matters — and that average is precisely the duty cycle times the supply voltage.',
+        ],
+      },
+      {
+        type: 'worked-example',
+        heading: 'Worked Example',
+        body: 'A motor driver runs its PWM signal at a 5V supply with a 70% duty cycle. Average voltage = 0.7 × 5V = 3.5V, driving the motor at roughly 70% of its full speed. Push duty cycle to 100% (constant HIGH) and the motor runs at full speed, exactly as if it were connected directly to the 5V supply.',
+      },
+      {
+        type: 'text',
+        kind: 'engineering',
+        heading: 'Engineering Application',
+        body: [
+          'PWM frequency has to be chosen carefully: too slow, and you can see an LED flicker or hear a motor whine at the switching frequency; too fast, and switching losses in the driver circuit increase. Typical motor PWM frequencies range from a few hundred Hz to tens of kHz.',
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'robotics',
+        heading: 'Robotics Connection',
+        body: [
+          "This is exactly how the motor driver from the 'How a Motor Moves a Robot Joint' lesson controls speed: the microcontroller doesn't send a variable voltage — it sends a PWM signal, and the driver circuit (plus the motor's own inertia) turns that into a smoothly variable effective voltage.",
+        ],
+      },
+    ],
+    exercises: [
+      {
+        id: 'pwm-predict',
+        kind: 'multiple-choice',
+        question: 'If you set duty cycle to 25%, what average voltage would a 5V-supply PWM signal produce?',
+        choices: ['5V', '3.75V', '1.25V', '0V'],
+        correctIndex: 2,
+        explanation:
+          'Average voltage = duty × supply = 0.25 × 5 = 1.25V — try setting duty cycle to 25% in the lab above and check the readout.',
+      },
+      {
+        id: 'pwm-calc',
+        kind: 'numeric',
+        question: 'A PWM signal has a 5V supply and a 40% duty cycle. What is the average voltage?',
+        answer: 2,
+        tolerance: 0.1,
+        unit: 'V',
+        explanation: 'Average voltage = 0.4 × 5 = 2V.',
+      },
+      {
+        id: 'pwm-flicker',
+        kind: 'multiple-choice',
+        question: 'Which change would make an LED driven by PWM flicker visibly to the human eye?',
+        choices: [
+          'Increasing duty cycle',
+          'Decreasing PWM frequency to something very slow, like 5 Hz',
+          'Increasing supply voltage',
+          'Using a bigger LED',
+        ],
+        correctIndex: 1,
+        explanation:
+          "If the switching frequency is slow enough that each on/off cycle takes a noticeable fraction of a second, the eye can perceive the flicker instead of averaging it away — that's why real PWM frequencies for LEDs are usually well above 100Hz.",
+      },
+      {
+        id: 'pwm-challenge',
+        kind: 'numeric',
+        role: 'challenge',
+        question: 'A motor needs an average of 9V from a 12V supply to reach its target speed. What duty cycle is required?',
+        answer: 75,
+        tolerance: 1,
+        unit: '%',
+        explanation: 'duty = average / supply = 9 / 12 = 0.75 = 75%.',
+      },
+    ],
+  },
+
+  {
+    id: 'gears-mechanical-advantage',
+    stageId: 'mechanical-engineering',
+    title: 'Gears and Mechanical Advantage',
+    hook: "Long before electric motors existed, engineers used levers to trade force for distance — the same trade-off every robot's gearbox still relies on today, just spinning instead of sliding.",
+    objectives: [
+      'Explain mechanical advantage using a lever/see-saw intuition.',
+      'Predict how gear ratio affects speed and torque before testing it.',
+      'Compute gear ratio, output speed, and torque multiplication for a meshing gear pair.',
+      'Explain why two meshing gears always rotate in opposite directions.',
+      'Connect gear trains to the gearbox used in the motor-to-joint lesson.',
+    ],
+    sections: [
+      {
+        type: 'text',
+        kind: 'intuition',
+        heading: 'Trading Force for Distance',
+        body: [
+          "A see-saw with a child sitting far from the pivot and an adult sitting close to it can balance — the adult's greater weight is compensated by the child's greater distance from the pivot. This trade-off between force and distance is called mechanical advantage, and it shows up everywhere in mechanical engineering, including inside every gearbox.",
+          "Two meshing gears do the same trick continuously: the point where their teeth touch must move at the same linear speed for both gears (otherwise the teeth would jam or slip), which forces the smaller gear to spin faster than the larger one — trading speed for torque, or torque for speed, depending on which way power flows.",
+        ],
+      },
+      {
+        type: 'interactive',
+        heading: 'Gear Train Lab',
+        component: 'GearTrainLab',
+        caption: 'Change the tooth counts and watch the driven gear (green) spin faster or slower than the driver (blue) — always in the opposite direction.',
+      },
+      {
+        type: 'exercise',
+        heading: 'Predict First',
+        exerciseId: 'gear-predict',
+      },
+      {
+        type: 'text',
+        kind: 'math',
+        heading: 'The Mathematics',
+        body: [
+          'For two meshing gears, gear ratio = driven teeth / driver teeth. Output (driven) speed = driver speed / gear ratio. Assuming no losses, output torque = input torque × gear ratio — speed and torque scale in exactly opposite directions, so their product (related to power) stays constant.',
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'derivation',
+        heading: 'Why the Teeth Must Move at the Same Speed',
+        body: [
+          "At the point where two gears mesh, their teeth are locked together — one tooth pushes directly on the next. If the gears' pitch circles (imaginary circles at the point of contact) didn't move at the same linear speed there, the teeth would either jam or grind past each other.",
+          'That shared linear speed at the contact point is what links the two gears\' angular speeds to their radii (and hence their tooth counts, since tooth size is the same on both gears): ω₁r₁ = ω₂r₂, which rearranges directly into the gear-ratio formula above.',
+        ],
+      },
+      {
+        type: 'worked-example',
+        heading: 'Worked Example',
+        body: 'A driver gear with 12 teeth spins at 30 RPM and meshes with a driven gear with 36 teeth. Gear ratio = 36/12 = 3. Output speed = 30/3 = 10 RPM, and output torque is 3× the input torque (ignoring friction losses) — the same trade-off you saw in the Gearbox Lab from the motor-to-joint lesson, now made explicit in terms of tooth counts instead of an abstract ratio.',
+      },
+      {
+        type: 'text',
+        kind: 'engineering',
+        heading: 'Engineering Application',
+        body: [
+          "Real gear trains chain several gear pairs together to reach very large ratios in a compact space, and use different tooth profiles, materials, and lubrication to manage friction, wear, and backlash (small amounts of play between meshing teeth) — all considerations a mechanical engineer weighs when designing a robot's drivetrain.",
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'robotics',
+        heading: 'Robotics Connection',
+        body: [
+          "The abstract 'gearbox' slider in the motor-to-joint lesson is, physically, exactly this: one or more meshing gear pairs like the ones above, chosen so their combined ratio matches what the joint needs.",
+        ],
+      },
+    ],
+    exercises: [
+      {
+        id: 'gear-predict',
+        kind: 'multiple-choice',
+        question: 'If the driven gear has twice as many teeth as the driver, what happens to its rotational speed compared to the driver?',
+        choices: ['It doubles', 'It halves', 'It stays the same', 'It reverses only, speed unchanged'],
+        correctIndex: 1,
+        explanation:
+          'A driven gear with twice the teeth must complete half a rotation for every full rotation of the driver (their teeth mesh at the same linear rate), so its speed halves — while its torque doubles.',
+      },
+      {
+        id: 'gear-ratio-calc',
+        kind: 'numeric',
+        question: 'A driver gear with 10 teeth meshes with a driven gear with 40 teeth. What is the gear ratio?',
+        answer: 4,
+        tolerance: 0.1,
+        explanation: 'gear ratio = driven teeth / driver teeth = 40 / 10 = 4.',
+      },
+      {
+        id: 'gear-speed-calc',
+        kind: 'numeric',
+        question: "Using the previous gear pair (ratio 4), if the driver spins at 80 RPM, what is the driven gear's speed?",
+        answer: 20,
+        tolerance: 1,
+        unit: 'RPM',
+        explanation: 'Output speed = driver speed / gear ratio = 80 / 4 = 20 RPM.',
+      },
+      {
+        id: 'gear-direction',
+        kind: 'multiple-choice',
+        question: 'Two meshing gears always rotate:',
+        choices: ['In the same direction', 'In opposite directions', 'Only clockwise', 'At the same speed'],
+        correctIndex: 1,
+        explanation: 'Meshing gears turn in opposite directions because their teeth push against each other from opposite sides at the contact point.',
+      },
+      {
+        id: 'gear-challenge',
+        kind: 'numeric',
+        role: 'challenge',
+        question:
+          'A driver gear (15 teeth, spinning at 100 RPM, producing 0.5 Nm) meshes with a driven gear with 60 teeth. What torque does the driven gear produce (ignoring losses)?',
+        answer: 2,
+        tolerance: 0.1,
+        unit: 'Nm',
+        explanation: 'gear ratio = 60/15 = 4; output torque = input torque × gear ratio = 0.5 × 4 = 2 Nm (speed drops to 25 RPM).',
+      },
+    ],
+  },
+
+  {
+    id: 'encoders-measuring-rotation',
+    stageId: 'sensors-perception',
+    title: 'Encoders and Measuring Rotation',
+    hook: 'Every closed-loop system in this course — the feedback control lab, the motor-to-joint chain — has quietly assumed you can measure a joint\'s angle. An encoder is the sensor that actually makes that possible.',
+    objectives: [
+      'Explain how a rotary encoder converts rotation into countable pulses.',
+      'Predict how resolution changes with segment count before testing it.',
+      'Compute angular resolution and measured angle from pulse count.',
+      'Explain the trade-off between higher resolution and pulse-counting difficulty.',
+      'Connect encoders to the sense step of the feedback loops from earlier lessons.',
+    ],
+    sections: [
+      {
+        type: 'text',
+        kind: 'intuition',
+        heading: 'Turning Rotation Into Something Digital',
+        body: [
+          "A microcontroller can count digital pulses easily, but a spinning shaft doesn't naturally produce pulses — an encoder's job is to convert continuous rotation into a stream of countable events. The simplest version: a disk with alternating light and dark (or slotted) segments spins between a light source and a sensor, and each segment boundary that passes the sensor produces one pulse.",
+          "Count enough pulses and you know how far the disk has turned — this is exactly the encoder referenced in the motor-to-joint and feedback-control lessons, now shown as the physical mechanism behind that single word 'encoder.'",
+        ],
+      },
+      {
+        type: 'interactive',
+        heading: 'Encoder Lab',
+        component: 'EncoderLab',
+        caption: 'Increase segment count for finer resolution, and change rotation speed to see pulses accumulate. Compare the true angle to what the encoder can actually measure.',
+      },
+      {
+        type: 'exercise',
+        heading: 'Predict First',
+        exerciseId: 'enc-predict',
+      },
+      {
+        type: 'text',
+        kind: 'math',
+        heading: 'The Mathematics',
+        body: [
+          'An encoder with N segments produces N pulses per revolution, so its resolution is 360°/N per pulse. After counting P pulses, the measured angle is P × (360°/N) — always a multiple of the resolution, never something finer, which is exactly the "quantization error" shown in the lab above.',
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'engineering',
+        heading: 'Engineering Application',
+        body: [
+          'Real encoders reach far higher resolution than a simple slotted disk by using two offset sensor channels (quadrature encoding), which also reveals the direction of rotation — something a single-channel encoder like the one in the lab cannot determine on its own. Higher resolution requires more segments (or channels) packed into the same disk, which means faster, more closely-spaced pulses that the electronics must reliably count without missing any — a real design trade-off.',
+        ],
+      },
+      {
+        type: 'worked-example',
+        heading: 'Worked Example',
+        body: 'An encoder disk has 24 segments. Resolution = 360°/24 = 15° per pulse. After the shaft turns to a true angle of 47°, the encoder can only report the most recently crossed boundary: 45° (3 pulses × 15°), an error of 2° — visible directly in the lab\'s quantization-error readout.',
+      },
+      {
+        type: 'text',
+        kind: 'robotics',
+        heading: 'Robotics Connection',
+        body: [
+          "This is the literal 'sense' step of the sense-think-act loop and the feedback-control lab: the encoder's pulse count becomes the 'current position' that gets compared against the target to compute an error, exactly as in the Proportional Control Lab from the Control Systems lesson.",
+        ],
+      },
+    ],
+    exercises: [
+      {
+        id: 'enc-predict',
+        kind: 'multiple-choice',
+        question: "If you double the number of segments on the disk, what happens to the encoder's angular resolution (the smallest angle it can distinguish)?",
+        choices: ['It doubles (gets worse)', 'It halves (gets better)', 'It stays the same', 'Resolution depends only on speed'],
+        correctIndex: 1,
+        explanation:
+          'Resolution = 360°/segments, so doubling the segment count halves the smallest distinguishable angle — finer resolution. Try it in the lab above.',
+      },
+      {
+        id: 'enc-resolution-calc',
+        kind: 'numeric',
+        question: 'An encoder disk has 12 segments. What is its angular resolution?',
+        answer: 30,
+        tolerance: 0.5,
+        unit: '°',
+        explanation: 'Resolution = 360 / 12 = 30° per pulse.',
+      },
+      {
+        id: 'enc-angle-calc',
+        kind: 'numeric',
+        question: 'An encoder with 20 segments has counted 15 pulses since the shaft started at 0°. What angle does it report?',
+        answer: 270,
+        tolerance: 1,
+        unit: '°',
+        explanation: 'Measured angle = 15 × (360 / 20) = 15 × 18 = 270°.',
+      },
+      {
+        id: 'enc-direction',
+        kind: 'multiple-choice',
+        question: "Why can't a single-channel encoder (like the one in the lab) determine which direction the shaft is turning?",
+        choices: [
+          'It can — direction is obvious from pulse count alone',
+          'A single pulse stream looks identical whether the disk spins clockwise or counterclockwise',
+          'It only works at low speeds',
+          'It has too few segments',
+        ],
+        correctIndex: 1,
+        explanation:
+          "A single sensor just sees a stream of on/off transitions — it can't tell whether they arrived because the disk moved forward or backward. Real encoders often use two offset channels (quadrature) specifically to resolve this ambiguity.",
+      },
+      {
+        id: 'enc-challenge',
+        kind: 'numeric',
+        role: 'challenge',
+        question: 'A robot joint needs to detect movements as small as 0.5°. What is the minimum number of segments its encoder disk needs?',
+        answer: 720,
+        tolerance: 5,
+        explanation: 'resolution = 360 / N ≤ 0.5 → N ≥ 720 segments (or an equivalent multi-channel/quadrature scheme reaching that effective resolution).',
+      },
+    ],
+  },
 ];

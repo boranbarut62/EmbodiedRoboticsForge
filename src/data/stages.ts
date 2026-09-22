@@ -21,14 +21,14 @@ export const stages: Stage[] = [
     id: 'embedded-systems',
     title: 'Embedded Systems',
     domain: 'Firmware & Microcontrollers',
-    status: 'coming-later',
+    status: 'available',
     blurb: 'Microcontrollers, GPIO, PWM, and how low-level code talks to hardware.',
   },
   {
     id: 'mechanical-engineering',
     title: 'Mechanical Engineering',
     domain: 'Mechanisms & Structures',
-    status: 'coming-later',
+    status: 'available',
     blurb: 'Gears, linkages, materials, and the physical structures that make up a robot.',
   },
   {
@@ -49,7 +49,7 @@ export const stages: Stage[] = [
     id: 'sensors-perception',
     title: 'Sensors & Perception',
     domain: 'Sensing the World',
-    status: 'coming-later',
+    status: 'available',
     blurb: 'Encoders, IMUs, LiDAR, and turning raw signals into useful information.',
   },
   {
