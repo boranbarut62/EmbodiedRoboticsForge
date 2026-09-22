@@ -1,0 +1,111 @@
+import type { Stage } from './types';
+
+// Order reflects the conceptual pipeline described in the roadmap, not a strict
+// prerequisite chain — many of these subjects branch and reconnect in practice.
+export const stages: Stage[] = [
+  {
+    id: 'foundations',
+    title: 'Foundations',
+    domain: 'Mathematics & Physics',
+    status: 'available',
+    blurb: 'Vectors, coordinate systems, and the mechanics that describe how things move.',
+  },
+  {
+    id: 'electronics',
+    title: 'Electronics',
+    domain: 'Electrical Engineering',
+    status: 'available',
+    blurb: 'Voltage, current, resistance, and the circuits that power every robot.',
+  },
+  {
+    id: 'embedded-systems',
+    title: 'Embedded Systems',
+    domain: 'Firmware & Microcontrollers',
+    status: 'coming-later',
+    blurb: 'Microcontrollers, GPIO, PWM, and how low-level code talks to hardware.',
+  },
+  {
+    id: 'mechanical-engineering',
+    title: 'Mechanical Engineering',
+    domain: 'Mechanisms & Structures',
+    status: 'coming-later',
+    blurb: 'Gears, linkages, materials, and the physical structures that make up a robot.',
+  },
+  {
+    id: 'robotics-fundamentals',
+    title: 'Robotics Fundamentals',
+    domain: 'Kinematics & Actuation',
+    status: 'available',
+    blurb: 'What a robot is, and how joints and actuators combine to create motion.',
+  },
+  {
+    id: 'control-systems',
+    title: 'Control Systems',
+    domain: 'Feedback & Stability',
+    status: 'available',
+    blurb: 'PID control, feedback loops, and keeping a physical system stable.',
+  },
+  {
+    id: 'sensors-perception',
+    title: 'Sensors & Perception',
+    domain: 'Sensing the World',
+    status: 'coming-later',
+    blurb: 'Encoders, IMUs, LiDAR, and turning raw signals into useful information.',
+  },
+  {
+    id: 'computer-vision',
+    title: 'Computer Vision',
+    domain: 'Seeing & Understanding',
+    status: 'coming-later',
+    blurb: 'Extending vision techniques toward pose estimation and 3D perception.',
+  },
+  {
+    id: 'machine-learning',
+    title: 'Machine Learning',
+    domain: 'Learning from Data',
+    status: 'coming-later',
+    blurb: 'Neural networks, optimization, and the ML foundations robotics relies on.',
+  },
+  {
+    id: 'ros2',
+    title: 'ROS 2',
+    domain: 'Robot Software Architecture',
+    status: 'coming-later',
+    blurb: 'Why robotic software is built from nodes, topics, and services.',
+  },
+  {
+    id: 'simulation',
+    title: 'Simulation',
+    domain: 'Virtual Robots',
+    status: 'coming-later',
+    blurb: 'Testing robots safely in physics engines before touching real hardware.',
+  },
+  {
+    id: 'autonomous-robotics',
+    title: 'Autonomous Robotics',
+    domain: 'Localization, Mapping & Planning',
+    status: 'coming-later',
+    blurb: 'SLAM, path planning, and robots that navigate without step-by-step instructions.',
+  },
+  {
+    id: 'robot-learning',
+    title: 'Robot Learning',
+    domain: 'Imitation & Reinforcement Learning',
+    status: 'coming-later',
+    blurb: 'Teaching robots skills from demonstrations and trial-and-error.',
+  },
+  {
+    id: 'embodied-ai',
+    title: 'Embodied AI',
+    domain: 'Perception, Planning & Action',
+    status: 'coming-later',
+    blurb: 'AI models that perceive, plan, and act inside a physical body.',
+  },
+  {
+    id: 'humanoid-robotics',
+    title: 'Humanoid Robotics',
+    domain: 'Locomotion & Whole-Body Control',
+    status: 'coming-later',
+    blurb: 'Balance, gait, dexterous manipulation, and whole-body humanoid control.',
+  },
+];
