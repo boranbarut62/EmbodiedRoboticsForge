@@ -1098,4 +1098,476 @@ export const lessons: Lesson[] = [
       },
     ],
   },
+
+  {
+    id: 'pixels-to-edges',
+    stageId: 'computer-vision',
+    title: 'From Pixels to Edges: The Front of the Perception Pipeline',
+    hook: "Before a robot can grasp a cup or follow a line, it has to turn a grid of brightness numbers into boundaries and shapes. You've studied computer vision before — this lesson reframes it the way a roboticist sees it: as the first stage of a sense-think-act loop that must work on noisy, real sensor data.",
+    objectives: [
+      "Treat an image as a matrix of intensities that a robot's software operates on.",
+      'Predict how sensor noise affects edge detection before testing it.',
+      'Explain blurring and edge detection as convolution with small kernels.',
+      'Derive why the Sobel operator approximates an image derivative.',
+      "Explain the blur-versus-detail trade-off in a robot's perception pipeline.",
+    ],
+    sections: [
+      {
+        type: 'text',
+        kind: 'intuition',
+        heading: 'An Image Is Just a Matrix',
+        body: [
+          "To a robot, a camera frame is not a picture — it's a matrix. A 640×480 grayscale image is 307,200 numbers, each one the brightness measured by one pixel of the sensor. Everything a robot 'sees' has to be computed from those numbers.",
+          'Objects are interesting precisely where brightness changes sharply: the edge of a box against a table, the border of a line on the floor. Finding those changes reliably — despite sensor noise, uneven lighting, and blur — is the first job of almost every perception pipeline.',
+        ],
+      },
+      {
+        type: 'interactive',
+        heading: 'Vision Pipeline Lab',
+        component: 'VisionLab',
+        caption:
+          'Step through the pipeline with the buttons. On Sobel Edges with blur at 0, noise shows up as speckled false edges. Try blur 1: the speckle vanishes while the box, ball, and floor line survive. Then try blur 3: the low-contrast dark ball disappears too — too much smoothing erases real detail.',
+      },
+      {
+        type: 'exercise',
+        heading: 'Predict First',
+        exerciseId: 'cv-predict-noise',
+      },
+      {
+        type: 'text',
+        kind: 'math',
+        heading: 'Convolution: Sliding a Small Kernel',
+        body: [
+          'Both blurring and edge detection are convolutions: slide a small grid of weights (a kernel) over every pixel, multiply each neighbor by its weight, and sum. A 3×3 box blur uses nine weights of 1/9 — each output pixel becomes the average of its neighborhood, which cancels out random noise.',
+          'The Sobel operator uses two kernels. Gx = [[−1, 0, 1], [−2, 0, 2], [−1, 0, 1]] responds to horizontal brightness change; Gy is the same kernel rotated 90°. Edge strength at each pixel is the gradient magnitude √(Gx² + Gy²), and a threshold on that magnitude produces the binary edge map in the lab.',
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'derivation',
+        heading: 'Why Sobel Is a Derivative',
+        body: [
+          "In calculus, the derivative of f(x) is approximately [f(x+1) − f(x−1)] / 2 — the difference between the values on either side. The middle row of Gx, [−1, 0, 1], computes exactly that difference between a pixel's right and left neighbors: it's a finite-difference derivative in the x direction.",
+          "The top and bottom rows repeat the same difference on neighboring rows, with the center row weighted twice as heavily. That extra averaging is built-in smoothing — so Sobel is a derivative and a small blur at once, which is why it tolerates noise better than a raw difference. Edges are simply places where the image's spatial derivative is large.",
+        ],
+      },
+      {
+        type: 'worked-example',
+        heading: 'Worked Example',
+        body: 'A 3×3 patch straddles a vertical edge: every row reads [10, 10, 50] (dark on the left, bright on the right). Gx = (−10 + 50) + 2(−10 + 50) + (−10 + 50) = 40 + 80 + 40 = 160. Every column is identical top to bottom, so Gy = 0. Gradient magnitude = √(160² + 0²) = 160 — a strong vertical edge.',
+      },
+      {
+        type: 'code',
+        heading: 'The Same Pipeline in OpenCV',
+        language: 'Python',
+        code: `import cv2
+
+frame = cv2.imread("frame.png", cv2.IMREAD_GRAYSCALE)
+
+blurred = cv2.GaussianBlur(frame, (5, 5), 0)   # suppress sensor noise
+gx = cv2.Sobel(blurred, cv2.CV_32F, 1, 0, ksize=3)
+gy = cv2.Sobel(blurred, cv2.CV_32F, 0, 1, ksize=3)
+magnitude = cv2.magnitude(gx, gy)
+
+edges = (magnitude > 150).astype("uint8") * 255`,
+        caption:
+          "The lab above runs this exact pipeline, written from scratch in the browser. OpenCV's cv2.Canny adds two refinements — thinning edges to one pixel wide and using two thresholds — on top of the same blur-then-gradient core.",
+      },
+      {
+        type: 'text',
+        kind: 'engineering',
+        heading: 'The Blur Trade-off',
+        body: [
+          'Every perception pipeline has to choose how much to smooth. Too little, and noise produces false edges — a line-following robot sees phantom lines. Too much, and thin real features blur away — a gripper misjudges where an object ends. Engineers tune this against the actual camera\'s noise, the lighting, and the smallest feature the robot must detect.',
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'robotics',
+        heading: 'Robotics Connection',
+        body: [
+          "Edges and thresholds power simple, fast robot behaviors directly: a line-follower thresholds the floor line; a pick-and-place cell finds a part's outline to compute its position and orientation.",
+          'Modern robots mostly use neural networks for perception — but the first layers of a trained convolutional neural network learn kernels that look remarkably like blur and Sobel filters. The Machine Learning stage picks up exactly here: instead of hand-designing kernels, a network learns them from data.',
+        ],
+      },
+    ],
+    exercises: [
+      {
+        id: 'cv-predict-noise',
+        kind: 'multiple-choice',
+        question: 'With blur set to 0, what happens to the edge map as you increase sensor noise?',
+        choices: [
+          'Nothing — edge detection ignores noise',
+          'Many false edges appear scattered across the image',
+          'The real edges disappear, but nothing else changes',
+          'The image gets brighter',
+        ],
+        correctIndex: 1,
+        explanation:
+          'Edge detection responds to rapid brightness changes between neighboring pixels — and random noise is exactly that: tiny, rapid changes everywhere. Without smoothing first, noise shows up as a speckle of false edges.',
+      },
+      {
+        id: 'cv-blur-calc',
+        kind: 'numeric',
+        question: 'A 3×3 box blur is applied at a pixel whose neighborhood is [0, 0, 90 / 0, 90, 90 / 90, 90, 90]. What is the blurred output value?',
+        answer: 60,
+        tolerance: 0.5,
+        explanation: 'A box blur averages all nine values: (0 + 0 + 90 + 0 + 90 + 90 + 90 + 90 + 90) / 9 = 540 / 9 = 60.',
+      },
+      {
+        id: 'cv-sobel-calc',
+        kind: 'numeric',
+        question:
+          'A 3×3 patch has rows [20, 20, 20], [20, 20, 20], [80, 80, 80] (dark above, bright below). Using Gy = [[−1, −2, −1], [0, 0, 0], [1, 2, 1]], what is Gy?',
+        answer: 240,
+        tolerance: 1,
+        explanation: 'Gy = −(20 + 2·20 + 20) + (80 + 2·80 + 80) = −80 + 320 = 240 — a strong horizontal edge.',
+      },
+      {
+        id: 'cv-why-blur',
+        kind: 'multiple-choice',
+        question: 'Why do vision pipelines usually blur an image before detecting edges?',
+        choices: [
+          'To make the image smaller',
+          'Because derivatives amplify noise, and blurring suppresses noise first',
+          'Because edge detectors only work on blurry images',
+          'To convert the image to grayscale',
+        ],
+        correctIndex: 1,
+        explanation:
+          'A derivative emphasizes rapid changes — including noise. Smoothing first removes much of the high-frequency noise, so the derivative responds mainly to real edges.',
+      },
+      {
+        id: 'cv-challenge',
+        kind: 'numeric',
+        role: 'challenge',
+        question: 'At one pixel, a Sobel filter gives Gx = 30 and Gy = 40. What is the gradient magnitude? (The lab would mark it as an edge if this exceeds the threshold.)',
+        answer: 50,
+        tolerance: 0.5,
+        explanation: '√(30² + 40²) = √2500 = 50. With an edge threshold of 45, for example, this pixel would be marked as an edge.',
+      },
+    ],
+  },
+
+  {
+    id: 'single-neuron',
+    stageId: 'machine-learning',
+    title: 'A Single Neuron: Learning a Decision from Data',
+    hook: "Hand-written rules break the moment a robot meets terrain, objects, or lighting its programmer didn't anticipate. Machine learning replaces the rule with a model whose parameters are fitted to data — and the smallest such model, a single neuron trained by gradient descent, already contains the core idea behind every robot policy network.",
+    objectives: [
+      'Describe a neuron as a weighted sum passed through an activation function.',
+      'Adjust weights and bias by hand and see how the decision boundary moves.',
+      'Predict what a too-large learning rate does before testing it.',
+      'Derive the gradient of the loss for a single sigmoid neuron.',
+      'Connect classifiers like this one to robot perception and policies.',
+    ],
+    sections: [
+      {
+        type: 'text',
+        kind: 'intuition',
+        heading: 'Rules vs. Learned Models',
+        body: [
+          "Suppose a mobile robot must decide whether the terrain ahead is safe to drive over, using two measurements: slope and roughness. You could hand-write a rule — 'unsafe if slope > 0.5' — but real data rarely splits along one clean threshold. Steep-but-smooth might be fine; gentle-but-rocky might not.",
+          'A neuron learns the rule instead. It computes a weighted sum z = w₁·slope + w₂·roughness + b, squashes it through a sigmoid into a probability between 0 and 1, and — this is the learning part — adjusts w₁, w₂, and b to fit examples labeled safe or unsafe.',
+        ],
+      },
+      {
+        type: 'interactive',
+        heading: 'Neuron Lab: Safe or Unsafe Terrain?',
+        component: 'NeuronLab',
+        caption:
+          'First drag the weight and bias sliders by hand to see how each one moves the decision boundary. Then press Train and watch gradient descent find a good boundary on its own, with the loss curve falling below the plot.',
+      },
+      {
+        type: 'exercise',
+        heading: 'Predict First',
+        exerciseId: 'ml-predict-lr',
+      },
+      {
+        type: 'text',
+        kind: 'math',
+        heading: 'The Neuron, Its Output, and Its Loss',
+        body: [
+          "The neuron computes z = w₁x₁ + w₂x₂ + b and outputs p = σ(z) = 1 / (1 + e⁻ᶻ), the predicted probability of 'unsafe.' The decision boundary is where p = 0.5, i.e. where z = 0 — a straight line in the (slope, roughness) plane, exactly the black line in the lab.",
+          'To measure how wrong the neuron is, use binary cross-entropy loss: L = −[y·log(p) + (1 − y)·log(1 − p)], averaged over all examples, where y is the true label (1 = unsafe). It is near 0 when the neuron is confident and correct, and grows sharply when it is confident and wrong.',
+          'Gradient descent then repeats one update: w ← w − η·∂L/∂w, where η is the learning rate — nudge every parameter slightly downhill on the loss surface.',
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'derivation',
+        heading: 'Where the Gradient Comes From',
+        body: [
+          'By the chain rule, ∂L/∂w₁ = (∂L/∂p)·(∂p/∂z)·(∂z/∂w₁). The sigmoid has the convenient derivative ∂p/∂z = p(1 − p), and ∂z/∂w₁ = x₁.',
+          'Working through ∂L/∂p = −y/p + (1 − y)/(1 − p) and multiplying by p(1 − p), almost everything cancels: ∂L/∂z = p − y. So the full gradient is simply ∂L/∂w₁ = (p − y)·x₁ — prediction error times input. That tiny expression is what the lab computes for every point on every training step, and it is the same chain-rule computation backpropagation performs through every layer of a deep network.',
+        ],
+      },
+      {
+        type: 'worked-example',
+        heading: 'Worked Example',
+        body: 'A terrain patch has slope 0.8 and roughness 0.5, and is truly unsafe (y = 1). With w₁ = 2, w₂ = 1, b = −1: z = 2(0.8) + 1(0.5) − 1 = 1.1, so p = σ(1.1) ≈ 0.75. The error is p − y = −0.25. The gradient for w₁ is −0.25 × 0.8 = −0.2; with learning rate 0.5, w₁ becomes 2 − 0.5 × (−0.2) = 2.1. The weight on slope increased, making the neuron slightly more confident that steep terrain is unsafe — exactly the correction you would want.',
+      },
+      {
+        type: 'code',
+        heading: 'The Training Loop in NumPy',
+        language: 'Python',
+        code: `import numpy as np
+
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+# X: (n, 2) array of [slope, roughness]; y: (n,) array of 0/1 labels
+w = np.array([-2.0, 3.0])
+b = 0.0
+lr = 3.0
+
+for step in range(500):
+    p = sigmoid(X @ w + b)        # forward pass
+    error = p - y                 # dL/dz for every example
+    w -= lr * (X.T @ error) / len(y)
+    b -= lr * error.mean()`,
+        caption:
+          'These lines are the entire training loop running in the lab. Frameworks like PyTorch compute the same gradients automatically for networks with millions of parameters.',
+      },
+      {
+        type: 'text',
+        kind: 'engineering',
+        heading: "When One Neuron Isn't Enough",
+        body: [
+          "A single neuron can only draw a straight-line boundary. Real robot data — images, lidar scans, joint trajectories — needs curved, high-dimensional boundaries, so neurons are stacked into layers, with each layer's outputs feeding the next. Training is still gradient descent on a loss; backpropagation is just the chain rule from the derivation above, applied layer by layer.",
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'robotics',
+        heading: 'Robotics Connection',
+        body: [
+          "In robotics, networks built from these neurons do two big jobs. In perception, they classify and detect: is this pixel part of a graspable object? Is this terrain traversable? In control, they become policies: the network's input is the robot's observations, and its output is an action — joint torques or velocities.",
+          'The Robot Learning stage builds directly on this: imitation learning fits a policy to demonstrations with a loss like the one above, and reinforcement learning adjusts the same kind of parameters using rewards instead of labels.',
+        ],
+      },
+    ],
+    exercises: [
+      {
+        id: 'ml-predict-lr',
+        kind: 'multiple-choice',
+        question: 'Before you try it: what do you expect if the learning rate is set very high (e.g. 40)?',
+        choices: [
+          'Training finishes perfectly in one step',
+          'The loss jumps around erratically instead of decreasing smoothly',
+          'The weights stop changing',
+          'Accuracy is guaranteed to reach 100%',
+        ],
+        correctIndex: 1,
+        explanation:
+          'A huge learning rate makes each update overshoot the minimum — the same failure mode as a too-high Kp in the control lab — so the loss bounces around instead of descending smoothly. Try it.',
+      },
+      {
+        id: 'ml-z-calc',
+        kind: 'numeric',
+        question: 'A neuron has w₁ = 1.5, w₂ = −2, b = 0.5. For input x₁ = 2, x₂ = 1, what is z?',
+        answer: 1.5,
+        tolerance: 0.01,
+        explanation: 'z = 1.5 × 2 + (−2) × 1 + 0.5 = 3 − 2 + 0.5 = 1.5.',
+      },
+      {
+        id: 'ml-sigmoid',
+        kind: 'multiple-choice',
+        question: 'What does σ(0) equal, and what does it mean for the decision?',
+        choices: ['0 — definitely safe', '0.5 — exactly on the decision boundary', '1 — definitely unsafe', 'It is undefined'],
+        correctIndex: 1,
+        explanation: 'σ(0) = 1 / (1 + e⁰) = 1/2. z = 0 is precisely the decision boundary, where the neuron is maximally uncertain.',
+      },
+      {
+        id: 'ml-gradient-direction',
+        kind: 'multiple-choice',
+        question: 'For an example labeled unsafe (y = 1) where the neuron predicts p = 0.2, which way will gradient descent push z for that example?',
+        choices: ['Down, toward 0', 'Up, making p larger', "It won't change", 'It depends only on the bias'],
+        correctIndex: 1,
+        explanation: '∂L/∂z = p − y = −0.8, which is negative. Moving against the gradient increases z, raising p toward the correct label of 1.',
+      },
+      {
+        id: 'ml-challenge',
+        kind: 'numeric',
+        role: 'challenge',
+        question: 'A weight w = 2.0 has gradient ∂L/∂w = 0.5, and the learning rate is 0.2. What is w after one gradient descent step?',
+        answer: 1.9,
+        tolerance: 0.01,
+        explanation: 'w ← w − η·∂L/∂w = 2.0 − 0.2 × 0.5 = 1.9.',
+      },
+    ],
+  },
+
+  {
+    id: 'ros2-nodes-topics',
+    stageId: 'ros2',
+    title: 'Nodes and Topics: How Robot Software Is Wired Together',
+    hook: 'Every lesson so far built one piece of a robot in isolation — a sensor, a controller, a vision filter. A real robot runs dozens of these at once, written by different people, at different rates, sometimes on different computers. ROS 2 exists to wire them together without turning the system into one tangled program.',
+    objectives: [
+      'Explain why robot software is split into independent processes (nodes).',
+      'Describe how publish/subscribe topics decouple senders from receivers.',
+      "Predict how a failed node's absence propagates through a system before testing it.",
+      'Compute message rates and bandwidth for a sensor topic.',
+      'Read and understand a minimal ROS 2 publisher node.',
+    ],
+    sections: [
+      {
+        type: 'text',
+        kind: 'intuition',
+        heading: 'Why Not One Big Program?',
+        body: [
+          "Imagine writing a whole robot as a single program: camera driver, perception, controller, and motor driver all in one loop. The camera runs at 30 Hz, the joint controller at 1000 Hz, perception whenever a frame is done. One slow step stalls everything, one crash kills the whole robot, and nobody can swap in a better perception algorithm without touching the controller's code.",
+          'ROS 2 splits the robot into nodes — independent processes that each do one job — which communicate by passing messages over named channels called topics. A node publishes to a topic without knowing who, if anyone, is listening; other nodes subscribe to the topics they need. That decoupling is the entire point.',
+        ],
+      },
+      {
+        type: 'interactive',
+        heading: 'ROS 2 Graph Lab',
+        component: 'ROSGraphLab',
+        caption:
+          'Blue dots are messages in flight. Click any node (or use the buttons) to kill or restart it, and watch which parts of the system starve. The motor driver deliberately stops when its commands go stale — a standard safety pattern.',
+      },
+      {
+        type: 'exercise',
+        heading: 'Predict First',
+        exerciseId: 'ros-predict-kill',
+      },
+      {
+        type: 'key-concepts',
+        heading: 'Key Concepts',
+        items: [
+          'Node: an independent process with one responsibility (a driver, a filter, a controller)',
+          'Topic: a named, typed channel for streaming messages (e.g. /image_raw of type sensor_msgs/Image)',
+          'Publish/subscribe: publishers and subscribers never reference each other — only the topic',
+          "Service: a request/response call for occasional operations (e.g. 'save the map')",
+          "Action: a long-running goal with feedback and cancellation (e.g. 'navigate to the kitchen')",
+          'Parameters and launch files: configure and start a whole graph of nodes together',
+          'tf2: the ROS library that tracks coordinate frames over time — the Vectors lesson, as infrastructure',
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'math',
+        heading: 'Rates, Bandwidth, and Staleness',
+        body: [
+          "A topic's bandwidth is message size × publish rate. An uncompressed 640×480 RGB image is 640 × 480 × 3 = 921,600 bytes; at 30 Hz that is about 27.6 MB/s — for one camera, before any other traffic. This arithmetic decides whether a robot needs image compression, a faster network, or on-board processing.",
+          'Rates also set freshness. If a controller runs at 100 Hz but its target arrives at 5 Hz, it acts on data up to 200 ms old. Systems define a staleness timeout — 1 second in the lab — after which data is treated as missing rather than trusted.',
+        ],
+      },
+      {
+        type: 'worked-example',
+        heading: 'Worked Example',
+        body: "A robot has a stereo camera — two 640×480 grayscale images at 1 byte per pixel — publishing at 20 Hz. Each image is 307,200 bytes, so one stereo pair is 614,400 bytes, and at 20 Hz that's about 12.3 MB/s. If a logger node and a perception node both subscribe from another computer, that data may cross the network twice.",
+      },
+      {
+        type: 'code',
+        heading: 'A Minimal ROS 2 Publisher',
+        language: 'Python (rclpy)',
+        code: `import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import JointState
+
+class EncoderDriver(Node):
+    def __init__(self):
+        super().__init__("encoder_driver")
+        self.pub = self.create_publisher(JointState, "/joint_states", 10)
+        self.create_timer(1 / 8, self.publish_state)   # 8 Hz, as in the lab
+
+    def publish_state(self):
+        msg = JointState()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.name = ["elbow"]
+        msg.position = [self.read_encoder_radians()]
+        self.pub.publish(msg)
+
+    def read_encoder_radians(self):
+        return 0.0  # pulse count × resolution, from the Encoders lesson
+
+rclpy.init()
+rclpy.spin(EncoderDriver())`,
+        caption:
+          "A complete ROS 2 publisher. Notice what it doesn't contain: any reference to the controller, the logger, or anyone else who reads /joint_states. The 10 is the queue depth — how many messages to buffer if a subscriber falls behind.",
+      },
+      {
+        type: 'text',
+        kind: 'engineering',
+        heading: 'Designing a Node Graph',
+        body: [
+          "Good ROS 2 systems keep nodes small and single-purpose, use standard message types (sensor_msgs, geometry_msgs) so tools and other nodes interoperate, and pick Quality-of-Service settings per topic — 'reliable' for commands that must arrive, 'best effort' for high-rate sensor streams where a fresh frame beats a retransmitted stale one. Command-line tools like ros2 topic hz and rqt_graph show exactly what the lab visualizes: which nodes exist, how they connect, and at what rates.",
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'robotics',
+        heading: 'Robotics Connection',
+        body: [
+          'Every earlier lesson maps onto this graph. The encoder from Sensors & Perception becomes an encoder_driver publishing /joint_states; the proportional controller from Control Systems becomes a controller node; the PWM from Embedded Systems lives inside motor_driver; the vision pipeline becomes perception. ROS 2 is less a new subject than the wiring diagram connecting everything you have studied into one running robot — and the Simulation stage will plug a simulated robot into this same graph.',
+        ],
+      },
+    ],
+    exercises: [
+      {
+        id: 'ros-predict-kill',
+        kind: 'multiple-choice',
+        question: 'Before trying it: if you kill the perception node, what happens to the motor driver?',
+        choices: [
+          "Nothing — it isn't directly connected to perception",
+          'It keeps driving with the last command forever',
+          'The controller stops getting /target_pose, stops publishing /cmd_torque, and the motor driver falls back to a safety stop',
+          'The camera driver crashes too',
+        ],
+        correctIndex: 2,
+        explanation:
+          'The motor driver has no direct link to perception — but the controller only publishes /cmd_torque while /target_pose is fresh. Kill perception and /target_pose goes stale, the controller starves, and the motor driver\'s command timeout triggers a safety stop. Failures propagate through data dependencies, not direct connections.',
+      },
+      {
+        id: 'ros-msg-count',
+        kind: 'numeric',
+        question: 'A camera publishes /image_raw at 30 Hz, and two nodes subscribe. How many messages does each subscriber receive in 2 seconds?',
+        answer: 60,
+        tolerance: 0.5,
+        explanation: '30 messages/s × 2 s = 60 messages. Each subscriber gets its own copy of every message.',
+      },
+      {
+        id: 'ros-service-vs-topic',
+        kind: 'multiple-choice',
+        question: 'Which of these is the best fit for a ROS 2 service rather than a topic?',
+        choices: [
+          'Streaming lidar scans at 10 Hz',
+          'Publishing joint states continuously',
+          'Asking a mapping node to save the current map to disk and reporting success or failure',
+          'Sending motor commands at 500 Hz',
+        ],
+        correctIndex: 2,
+        explanation:
+          'Services are request/response — ideal for occasional operations with a single reply. Continuous streams belong on topics; long goals with progress feedback belong in actions.',
+      },
+      {
+        id: 'ros-decoupling',
+        kind: 'multiple-choice',
+        question: 'You want to record camera images for debugging. With publish/subscribe, what do you need to change in the camera driver?',
+        choices: [
+          'Add a call to the logger inside the driver',
+          'Nothing — start a logger node that subscribes to /image_raw',
+          'Merge the logger into the camera driver process',
+          'Restart the camera driver with a debug flag',
+        ],
+        correctIndex: 1,
+        explanation:
+          "This is the decoupling payoff: publishers don't know their subscribers, so a new consumer (like ros2 bag record) can be added without touching existing code — exactly what the logger node in the lab does.",
+      },
+      {
+        id: 'ros-challenge',
+        kind: 'numeric',
+        role: 'challenge',
+        question:
+          'An uncompressed 640×480 RGB camera (3 bytes per pixel) publishes at 30 Hz. What bandwidth does its /image_raw topic need, in megabytes per second (1 MB = 1,000,000 bytes)?',
+        answer: 27.648,
+        tolerance: 0.3,
+        unit: 'MB/s',
+        explanation:
+          '640 × 480 × 3 = 921,600 bytes per frame; × 30 Hz = 27,648,000 bytes/s ≈ 27.6 MB/s — which is why real robots often publish compressed images.',
+      },
+    ],
+  },
 ];

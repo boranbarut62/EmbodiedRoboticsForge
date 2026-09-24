@@ -63,6 +63,18 @@ export function LessonSectionView({
       );
     }
 
+    case 'code':
+      return (
+        <section className="card">
+          <p className="section-eyebrow">In Code · {section.language}</p>
+          <h2>{section.heading}</h2>
+          <pre className="code-block">
+            <code>{section.code}</code>
+          </pre>
+          {section.caption && <p className="interactive-caption">{section.caption}</p>}
+        </section>
+      );
+
     case 'exercise': {
       const exercise = exerciseById.get(section.exerciseId);
       if (!exercise) return null;

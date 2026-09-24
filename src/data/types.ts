@@ -67,12 +67,20 @@ export interface ExerciseRefSection extends SectionBase {
   exerciseId: string;
 }
 
+export interface CodeSection extends SectionBase {
+  type: 'code';
+  language: string;
+  code: string;
+  caption?: string;
+}
+
 export type LessonSection =
   | TextSection
   | KeyConceptsSection
   | WorkedExampleSection
   | InteractiveSection
-  | ExerciseRefSection;
+  | ExerciseRefSection
+  | CodeSection;
 
 export interface Lesson {
   id: string;

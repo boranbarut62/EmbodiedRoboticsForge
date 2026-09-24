@@ -8,6 +8,9 @@ import { PIDLab } from './PIDLab';
 import { PWMLab } from './PWMLab';
 import { GearTrainLab } from './GearTrainLab';
 import { EncoderLab } from './EncoderLab';
+import { VisionLab } from './VisionLab';
+import { NeuronLab } from './NeuronLab';
+import { ROSGraphLab } from './ROSGraphLab';
 
 export const interactives: Record<string, ComponentType> = {
   VectorPlayground,
@@ -19,4 +22,7 @@ export const interactives: Record<string, ComponentType> = {
   PWMLab,
   GearTrainLab,
   EncoderLab,
+  VisionLab,
+  NeuronLab,
+  ROSGraphLab,
 };

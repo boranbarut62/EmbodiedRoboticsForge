@@ -292,6 +292,8 @@ a { color: var(--accent); }
   flex-shrink: 0;
   position: sticky;
   top: 76px;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
 }
 
 .lesson-sidebar-title {
@@ -490,6 +492,28 @@ a { color: var(--accent); }
   margin-bottom: 8px;
 }
 
+.code-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 8px 0 0;
+  overflow-x: auto;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-h);
+}
+
+.pixel-canvas {
+  width: 100%;
+  max-width: 480px;
+  image-rendering: pixelated;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #000;
+}
+
 /* Numeric exercise input */
 
 .exercise-numeric {
@@ -632,5 +656,6 @@ a { color: var(--accent); }
   .lesson-sidebar {
     width: 100%;
     position: static;
+    max-height: none;
   }
 }
