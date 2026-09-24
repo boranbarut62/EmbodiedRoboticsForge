@@ -1570,4 +1570,495 @@ rclpy.spin(EncoderDriver())`,
       },
     ],
   },
+
+  {
+    id: 'physics-engines-timestep',
+    stageId: 'simulation',
+    title: 'Inside a Physics Engine: Stepping Time Forward',
+    hook: 'Robot hardware is expensive, slow to reset, and breaks when a controller goes wrong — so modern robotics is developed in simulation first. But a simulator is only as trustworthy as the way it steps time forward, and one surprisingly small choice — which integration formula to use — decides whether a simulated robot behaves physically or quietly gains energy until it flies apart.',
+    objectives: [
+      "Explain how a physics engine advances a robot's state in discrete time steps.",
+      'Predict how the time step and integrator affect a simulation before testing it.',
+      'Compute explicit and semi-implicit Euler updates by hand.',
+      'Derive why explicit Euler steadily gains energy on an oscillating system.',
+      'Explain the sim-to-real gap and why tools like MuJoCo, Gazebo, and Isaac Sim exist.',
+    ],
+    sections: [
+      {
+        type: 'text',
+        kind: 'intuition',
+        heading: 'A Simulator Is a Loop',
+        body: [
+          "Every physics engine — MuJoCo, Gazebo, Isaac Sim — runs the same core loop: from the robot's current positions and velocities, compute the forces (gravity, motor torques, contacts), turn forces into accelerations, and advance positions and velocities by one small time step dt. Repeat thousands of times per simulated second.",
+          'The pendulum below is a single robot link swinging under gravity with no friction, so its total energy should stay exactly constant forever. That makes it the perfect test: any change in energy is error introduced by the simulator itself.',
+        ],
+      },
+      {
+        type: 'interactive',
+        heading: 'Integrator Lab',
+        component: 'PendulumSimLab',
+        caption:
+          'Three copies of the same pendulum, each stepped with a different integration formula. The true energy is a flat 100%. Slide the time step up and watch which methods drift — then slide it down to 0.002 s and see what changes.',
+      },
+      {
+        type: 'exercise',
+        heading: 'Predict First',
+        exerciseId: 'sim-predict-euler',
+      },
+      {
+        type: 'text',
+        kind: 'math',
+        heading: 'Three Ways to Take a Step',
+        body: [
+          'Let α = −(g/L)·sin θ be the angular acceleration gravity produces. Explicit Euler updates both variables from the old values: θₙ₊₁ = θₙ + ωₙ·dt and ωₙ₊₁ = ωₙ + αₙ·dt.',
+          'Semi-implicit (symplectic) Euler changes only the order: update velocity first, then use the new velocity for position: ωₙ₊₁ = ωₙ + αₙ·dt, then θₙ₊₁ = θₙ + ωₙ₊₁·dt. Same cost, very different long-run behavior.',
+          'RK4 (fourth-order Runge–Kutta) samples the dynamics four times within each step and blends them. It is far more accurate per step, at four times the work.',
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'derivation',
+        heading: 'Why Explicit Euler Gains Energy',
+        body: [
+          'For small swings the pendulum behaves like a harmonic oscillator, x″ = −ω²x, whose energy is proportional to ω²x² + v². Explicit Euler gives x′ = x + v·dt and v′ = v − ω²x·dt.',
+          "Expand the new energy: ω²(x + v·dt)² + (v − ω²x·dt)². The cross terms, +2ω²xv·dt and −2ω²xv·dt, cancel exactly, leaving ω²x² + v² + ω²v²dt² + ω⁴x²dt² = (ω²x² + v²)(1 + ω²dt²). So every single step multiplies the energy by (1 + ω²dt²), which is always greater than 1. A smaller dt slows the growth but never stops it.",
+          "Semi-implicit Euler's velocity-first ordering exactly preserves a slightly modified energy, so its error oscillates but never accumulates. That is why it's the default in many game and robotics physics engines.",
+        ],
+      },
+      {
+        type: 'worked-example',
+        heading: 'Worked Example',
+        body: 'A simulated joint has angle 0.5 rad, angular velocity 2 rad/s, and angular acceleration −4 rad/s², with dt = 0.01 s. Explicit Euler: θ = 0.5 + 2 × 0.01 = 0.52 and ω = 2 + (−4) × 0.01 = 1.96. Semi-implicit Euler: ω = 1.96 first, then θ = 0.5 + 1.96 × 0.01 = 0.5196. The difference is only 0.0004 rad per step — but over a million steps, whether such errors cancel out or pile up decides whether the simulation stays physical.',
+      },
+      {
+        type: 'code',
+        heading: 'The Same Pendulum in MuJoCo',
+        language: 'Python',
+        code: `import mujoco
+
+xml = """
+<mujoco>
+  <option timestep="0.002" integrator="implicitfast"/>
+  <worldbody>
+    <body pos="0 0 1">
+      <joint name="swing" type="hinge" axis="0 1 0"/>
+      <geom type="capsule" fromto="0 0 0 0 0 -1" size="0.02" mass="1"/>
+    </body>
+  </worldbody>
+</mujoco>
+"""
+model = mujoco.MjModel.from_xml_string(xml)
+data = mujoco.MjData(model)
+data.qpos[0] = 1.0                    # start at about 57 degrees
+
+for _ in range(5000):                 # 5000 × 0.002 s = 10 s of robot time
+    mujoco.mj_step(model, data)       # one integration step
+
+print(data.qpos[0], data.qvel[0])`,
+        caption:
+          'MuJoCo is the physics engine behind much of today\'s robot-learning research. timestep and integrator are exactly the two knobs from the lab.',
+      },
+      {
+        type: 'text',
+        kind: 'engineering',
+        heading: 'Choosing a Time Step and a Simulator',
+        body: [
+          'Stiff interactions — a foot striking the ground, fingers squeezing an object — need small steps, often 1–2 ms, and halving dt doubles the compute. Engineers pick the largest time step that keeps the stiffest part of the scene stable.',
+          'They also pick the tool for the job: Gazebo for testing a full ROS 2 system end to end, MuJoCo for fast and accurate contact dynamics, and Isaac Sim / Isaac Lab for training thousands of robots in parallel on a GPU.',
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'robotics',
+        heading: 'The Sim-to-Real Gap',
+        body: [
+          "Even a perfectly integrated simulation is only a model: real motors have friction and backlash, real sensors have noise and delay, real floors aren't flat. A controller or learned policy that exploits simulator quirks fails on hardware. The Robot Learning stage returns to this with domain randomization — deliberately varying masses, friction, and delays in simulation so the policy learns to handle whatever the real world turns out to be.",
+        ],
+      },
+    ],
+    exercises: [
+      {
+        id: 'sim-predict-euler',
+        kind: 'multiple-choice',
+        question: "At dt = 0.05 s, what do you expect to happen to the explicit Euler pendulum's energy over time?",
+        choices: [
+          'It stays at 100%',
+          'It slowly drains toward 0%, like friction',
+          'It keeps growing — the swings get bigger and bigger',
+          'It jumps randomly up and down',
+        ],
+        correctIndex: 2,
+        explanation:
+          'Explicit Euler systematically adds energy to oscillating systems (the derivation below shows exactly how much per step), so the swings grow until the pendulum whirls over the top — impossible for a frictionless pendulum. Try it.',
+      },
+      {
+        id: 'sim-euler-calc',
+        kind: 'numeric',
+        question: 'A simulated cart has position x = 2.0 m and velocity v = 3.0 m/s. Using explicit Euler with dt = 0.1 s, what is x after one step?',
+        answer: 2.3,
+        tolerance: 0.01,
+        unit: 'm',
+        explanation: 'x ← x + v·dt = 2.0 + 3.0 × 0.1 = 2.3 m.',
+      },
+      {
+        id: 'sim-rate',
+        kind: 'numeric',
+        question: "MuJoCo's default time step is 0.002 s. How many integration steps does it take to simulate 30 seconds of robot time?",
+        answer: 15000,
+        tolerance: 1,
+        explanation: '30 s / 0.002 s = 15,000 steps — which is why simulating many robots in parallel needs a fast engine.',
+      },
+      {
+        id: 'sim-why-semi',
+        kind: 'multiple-choice',
+        question: 'Why do many physics engines prefer semi-implicit Euler over explicit Euler?',
+        choices: [
+          'It is much more expensive, but perfectly accurate',
+          "It costs the same per step, but keeps an oscillating system's energy bounded instead of growing",
+          'It only works for pendulums',
+          'It removes the need for a time step',
+        ],
+        correctIndex: 1,
+        explanation:
+          'Swapping the update order costs nothing extra, yet the energy error stays bounded instead of compounding every step — exactly the blue curve versus the red curve in the lab.',
+      },
+      {
+        id: 'sim-challenge',
+        kind: 'numeric',
+        role: 'challenge',
+        question:
+          'For an oscillator with ω² = 10 (rad/s)², explicit Euler multiplies energy by (1 + ω²·dt²) every step. With dt = 0.1 s, by what factor has the energy grown after 10 steps? (Two decimals.)',
+        answer: 2.59,
+        tolerance: 0.03,
+        explanation: 'Each step multiplies by 1 + 10 × 0.01 = 1.1, so after 10 steps: 1.1¹⁰ ≈ 2.59 — the energy has more than doubled in one simulated second.',
+      },
+    ],
+  },
+
+  {
+    id: 'path-planning',
+    stageId: 'autonomous-robotics',
+    title: 'Path Planning: BFS, Dijkstra, and A*',
+    hook: "An autonomous robot constantly answers one question: how do I get from here to there without hitting anything, as cheaply as possible? You may have met these algorithms in a data structures course — here you'll watch what each one actually does on a robot's map, and see why A* became the workhorse of robot navigation.",
+    objectives: [
+      "Represent a robot's environment as a grid graph with obstacles and traversal costs.",
+      'Predict which algorithm routes through expensive terrain before testing it.',
+      'Compare BFS, Dijkstra, and A* by path cost and number of cells expanded.',
+      'Explain why an admissible heuristic keeps A* optimal.',
+      'Connect grid planning to occupancy grids and real navigation stacks.',
+    ],
+    sections: [
+      {
+        type: 'text',
+        kind: 'intuition',
+        heading: 'The World as a Graph',
+        body: [
+          'A mobile robot typically plans on an occupancy grid: the floor divided into cells, each marked free, occupied, or somewhere in between. Every free cell is a node; neighboring cells are connected by edges whose cost reflects distance or difficulty — mud, gravel, or a slope costs more than smooth floor. Path planning becomes graph search.',
+          'The three classic algorithms differ in just one thing: which cell they explore next. BFS goes in order of number of steps, Dijkstra in order of accumulated cost, and A* in order of accumulated cost plus an estimate of the cost still remaining to the goal.',
+        ],
+      },
+      {
+        type: 'interactive',
+        heading: 'Path Planner Lab',
+        component: 'PathPlannerLab',
+        caption:
+          'Pick an algorithm and watch it search: shaded cells have been expanded, and the final path appears as blue dots. Paint walls or mud (cost 5) onto the map, and compare all three algorithms in the table below it.',
+      },
+      {
+        type: 'exercise',
+        heading: 'Predict First',
+        exerciseId: 'plan-predict-mud',
+      },
+      {
+        type: 'text',
+        kind: 'math',
+        heading: 'Costs, Priorities, and the Heuristic',
+        body: [
+          'Each algorithm keeps a frontier of discovered-but-unexpanded cells and repeatedly expands the best one. Dijkstra prioritizes g(n), the cheapest known cost from the start to n. A* prioritizes f(n) = g(n) + h(n), where h(n) estimates the remaining cost to the goal.',
+          'On a 4-connected grid the natural estimate is the Manhattan distance, h(n) = |x − x_goal| + |y − y_goal|. BFS is Dijkstra with every move treated as cost 1 — which is why it minimizes steps rather than cost.',
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'derivation',
+        heading: 'Why A* Is Still Optimal',
+        body: [
+          'A heuristic is admissible if it never overestimates the true remaining cost. Manhattan distance is admissible here: every move changes x or y by exactly 1 and costs at least 1, so no route to the goal can be cheaper than the Manhattan distance.',
+          'Now suppose A* were about to finish with a worse path of cost C. Somewhere along the true optimal path (cost C* < C) sits a frontier cell n with f(n) = g(n) + h(n) ≤ g(n) + (true remaining cost) = C* < C. That cell has a lower priority value than the goal, so A* must expand it first — it can never accept the worse path.',
+          'The heuristic only changes the order of exploration, pulling it toward the goal. That is why A* expands far fewer cells than Dijkstra while returning an equally cheap path — compare their rows in the lab.',
+        ],
+      },
+      {
+        type: 'worked-example',
+        heading: 'Worked Example',
+        body: 'Start at (0, 0), goal at (4, 3). The frontier holds cell A at (2, 1) with g = 3, and cell B at (1, 3) with g = 5 (it crossed mud). Heuristics: h(A) = 2 + 2 = 4 and h(B) = 3 + 0 = 3, so f(A) = 7 and f(B) = 8 — A* expands A next. Dijkstra would also pick A (g = 3 < 5), but with no sense of direction it would already have expanded every cell with g < 3, in every direction, to get here.',
+      },
+      {
+        type: 'code',
+        heading: 'A* in Python',
+        language: 'Python',
+        code: `import heapq
+
+def astar(grid, start, goal):
+    """grid[y][x] is None for a wall, otherwise the cost to enter that cell."""
+    def h(cell):
+        return abs(cell[0] - goal[0]) + abs(cell[1] - goal[1])
+
+    frontier = [(h(start), 0, start)]          # (f, g, cell)
+    came_from = {start: None}
+    best_g = {start: 0}
+
+    while frontier:
+        f, g, cell = heapq.heappop(frontier)
+        if cell == goal:
+            path = []
+            while cell is not None:
+                path.append(cell)
+                cell = came_from[cell]
+            return path[::-1], g
+        if g > best_g[cell]:
+            continue                             # stale queue entry
+        x, y = cell
+        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if 0 <= ny < len(grid) and 0 <= nx < len(grid[0]) and grid[ny][nx] is not None:
+                new_g = g + grid[ny][nx]
+                if new_g < best_g.get((nx, ny), float("inf")):
+                    best_g[(nx, ny)] = new_g
+                    came_from[(nx, ny)] = cell
+                    heapq.heappush(frontier, (new_g + h((nx, ny)), new_g, (nx, ny)))
+    return None, float("inf")`,
+        caption:
+          'Make h return 0 and this is Dijkstra. Swap the priority queue for a plain FIFO queue and ignore costs, and it is BFS. The three algorithms are one algorithm with different priorities.',
+      },
+      {
+        type: 'text',
+        kind: 'engineering',
+        heading: 'From Grid to Real Planner',
+        body: [
+          "Real navigation stacks, like ROS 2's Nav2, run this same idea at scale: a global planner searches a costmap built from lidar, with costs inflated near obstacles so paths keep a safety margin, and a local planner follows that path while reacting to moving obstacles. Grid resolution is a trade-off — finer cells find paths through narrow gaps but multiply the number of cells to search.",
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'robotics',
+        heading: 'Beyond Grids',
+        body: [
+          "Grid search suits a mobile base moving in 2D. A robot arm with 7 joints lives in a 7-dimensional configuration space, where a grid would be impossibly large, so arm planners use sampling-based methods like RRT and RRT*, which grow a tree of random collision-free configurations instead. Whatever the method, the planner's output feeds the controllers from earlier stages, which turn a path into actual motor commands.",
+        ],
+      },
+    ],
+    exercises: [
+      {
+        id: 'plan-predict-mud',
+        kind: 'multiple-choice',
+        question: 'On the default map, one algorithm routes straight through the mud. Which one?',
+        choices: ['BFS', 'Dijkstra', 'A*', 'All three'],
+        correctIndex: 0,
+        explanation:
+          'BFS explores by number of steps and treats every move as equally cheap, so it takes the fewest-steps route straight through the mud. Dijkstra and A* track accumulated cost, so they take a couple of extra steps to go around. Compare the Path cost column in the table.',
+      },
+      {
+        id: 'plan-heuristic',
+        kind: 'numeric',
+        question: 'On a 4-connected grid, what is the Manhattan-distance heuristic from cell (2, 3) to a goal at (7, 9)?',
+        answer: 11,
+        tolerance: 0.01,
+        explanation: 'h = |2 − 7| + |3 − 9| = 5 + 6 = 11.',
+      },
+      {
+        id: 'plan-cost',
+        kind: 'numeric',
+        question: 'A path takes 12 moves. 3 of them enter mud cells (cost 5); the rest enter normal cells (cost 1). What is its total cost?',
+        answer: 24,
+        tolerance: 0.01,
+        explanation: '9 normal moves × 1 + 3 mud moves × 5 = 9 + 15 = 24.',
+      },
+      {
+        id: 'plan-admissible',
+        kind: 'multiple-choice',
+        question: "What does it mean for A*'s heuristic to be admissible?",
+        choices: [
+          'It always exactly equals the true remaining cost',
+          'It never overestimates the true remaining cost',
+          'It is always zero',
+          'It overestimates so the search finishes faster',
+        ],
+        correctIndex: 1,
+        explanation:
+          'Admissible means h(n) ≤ true remaining cost, which guarantees A* returns an optimal path. h = 0 is admissible too — but then A* is just Dijkstra. The closer an admissible h gets to the true cost, the fewer cells A* expands.',
+      },
+      {
+        id: 'plan-challenge',
+        kind: 'multiple-choice',
+        role: 'challenge',
+        question: "You replace A*'s heuristic with 3 × Manhattan distance. What is the most likely result?",
+        choices: [
+          'Same optimal path and fewer cells expanded, guaranteed',
+          'Fewer cells expanded, but the path may cost more than the optimum',
+          'More cells expanded and a cheaper path',
+          'The search can no longer find any path',
+        ],
+        correctIndex: 1,
+        explanation:
+          'A clean straight route costs exactly the Manhattan distance, so tripling it overestimates — the heuristic is no longer admissible. The search gets greedier, rushing toward the goal and expanding fewer cells, but it can commit to a route through mud before discovering the cheaper detour. "Weighted A*" makes exactly this trade in practice: speed for a bounded loss of optimality.',
+      },
+    ],
+  },
+
+  {
+    id: 'q-learning',
+    stageId: 'robot-learning',
+    title: 'Reinforcement Learning: Learning from Reward',
+    hook: "In the Machine Learning stage, a neuron learned from labeled examples: here's the terrain, here's the right answer. A robot learning to walk or grasp rarely gets labels — it gets consequences. Reinforcement learning turns trial, error, and reward into a policy, and it is behind many of today's learned legged-locomotion controllers.",
+    objectives: [
+      'Define state, action, reward, policy, and value for a robot task.',
+      "Predict how the agent's returns evolve as training proceeds.",
+      'Compute a Q-learning update and a discounted return by hand.',
+      'Explain the exploration–exploitation trade-off controlled by ε.',
+      'Connect tabular Q-learning to deep RL, imitation learning, and sim-to-real.',
+    ],
+    sections: [
+      {
+        type: 'text',
+        kind: 'intuition',
+        heading: 'Learning from Consequences',
+        body: [
+          'The robot below lives on a small grid and can move up, down, left, or right. Every move costs −1 (energy and time), falling into a pit costs −10 and ends the attempt, and reaching the charging station earns +10. Nobody tells it the route; it has to discover one by trying things and noticing what paid off.',
+          'Q-learning keeps a table Q(s, a): for every state s (cell) and action a (move), an estimate of the total future reward from taking a there and acting well afterward. The policy is simply: in each state, pick the action with the highest Q.',
+        ],
+      },
+      {
+        type: 'interactive',
+        heading: 'Q-Learning Lab',
+        component: 'QLearningLab',
+        caption:
+          'Train some episodes and watch value spread backward from the goal (green) and away from the pits (red), with arrows showing the current best action in each cell. Press Watch Policy to see the learned behavior. Then try training a few hundred episodes, setting ε to 0, and training again — notice what happens to the average return.',
+      },
+      {
+        type: 'exercise',
+        heading: 'Predict First',
+        exerciseId: 'rl-predict-returns',
+      },
+      {
+        type: 'text',
+        kind: 'math',
+        heading: 'The Q-Learning Update',
+        body: [
+          "After each move from state s with action a, receiving reward r and landing in s′, the agent updates Q(s, a) ← Q(s, a) + α·[r + γ·maxₐ′ Q(s′, a′) − Q(s, a)]. The bracket is the temporal-difference (TD) error: the gap between what the agent predicted and what it now believes, based on the reward it just received plus its own estimate of the next state.",
+          'α (learning rate) sets how far each update moves. γ (discount factor, between 0 and 1) sets how much future reward counts relative to immediate reward. The agent is maximizing the discounted return G = r₁ + γr₂ + γ²r₃ + ⋯',
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'derivation',
+        heading: 'Why the Update Works',
+        body: [
+          'By definition, the optimal Q-value is the immediate reward plus the discounted value of acting optimally from the next state: Q*(s, a) = E[r + γ·maxₐ′ Q*(s′, a′)]. This is the Bellman equation — a consistency condition the true Q-values must satisfy.',
+          'The Q-learning update nudges each table entry toward the right-hand side, one real sample at a time. Over many visits the errors shrink until the table is approximately self-consistent, and value propagates backward from the reward: first the cell next to the goal learns it is valuable, then the cell next to that one, and so on — exactly the spreading green in the lab.',
+        ],
+      },
+      {
+        type: 'worked-example',
+        heading: 'Worked Example',
+        body: 'The agent is in a cell with Q(s, right) = 2. It moves right, gets r = −1, and lands in a cell whose best Q-value is 6. With α = 0.5 and γ = 0.9: target = −1 + 0.9 × 6 = 4.4; TD error = 4.4 − 2 = 2.4; new Q(s, right) = 2 + 0.5 × 2.4 = 3.2. Moving right from here now looks more attractive, because it leads somewhere good.',
+      },
+      {
+        type: 'code',
+        heading: 'Q-Learning in Python',
+        language: 'Python',
+        code: `import random
+from collections import defaultdict
+
+Q = defaultdict(lambda: [0.0, 0.0, 0.0, 0.0])    # 4 actions per state
+alpha, gamma, epsilon = 0.5, 0.95, 0.2
+
+for episode in range(500):
+    state = env.reset()
+    done = False
+    while not done:
+        if random.random() < epsilon:
+            action = random.randrange(4)                          # explore
+        else:
+            action = max(range(4), key=lambda a: Q[state][a])     # exploit
+        next_state, reward, done = env.step(action)
+        target = reward if done else reward + gamma * max(Q[next_state])
+        Q[state][action] += alpha * (target - Q[state][action])
+        state = next_state`,
+        caption:
+          "This is the whole algorithm running in the lab. Libraries like Gymnasium standardize this reset/step loop (their step also reports truncation and extra info), so the same agent code can train on a gridworld, a simulated arm, or a legged robot.",
+      },
+      {
+        type: 'text',
+        kind: 'engineering',
+        heading: 'From Tables to Networks',
+        body: [
+          "A table works for 35 cells. A walking robot's state — dozens of joint angles and velocities, body orientation, contact forces — is continuous and high-dimensional, so the table is replaced by a neural network: the Machine Learning stage's neurons, stacked deep. Deep RL algorithms such as PPO and SAC train these networks, typically across thousands of parallel simulated robots in tools like Isaac Lab, because they need millions of trials that would take years — and many broken robots — on real hardware.",
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'robotics',
+        heading: 'Where This Goes Next',
+        body: [
+          "Reward design is where RL gets hard in practice: reward only 'reached the goal' and learning is painfully slow; add shaped rewards carelessly and the agent finds loopholes. That's why robot learning also leans on imitation learning — learning a policy directly from human demonstrations — often followed by RL fine-tuning.",
+          'Every policy trained in simulation must also cross the sim-to-real gap from the Simulation stage, typically with domain randomization. Embodied AI, the next stage, puts perception, learning, and control together into one agent.',
+        ],
+      },
+    ],
+    exercises: [
+      {
+        id: 'rl-predict-returns',
+        kind: 'multiple-choice',
+        question: 'Before training: as you train more and more episodes, what do you expect the return curve to do?',
+        choices: [
+          "Stay flat — the agent can't improve without labels",
+          'Rise from very negative values and level off near the best possible return',
+          'Oscillate forever with no trend',
+          'Steadily decrease',
+        ],
+        correctIndex: 1,
+        explanation:
+          'Early episodes are mostly wandering and falling into pits, so returns are very negative. As value propagates back from the goal, the greedy policy improves and returns climb, then level off below the best achievable return (+1). How far below depends on ε: exploration keeps forcing random moves, and some of them land in pits. Set ε to 0 after training and the average return climbs to exactly +1.',
+      },
+      {
+        id: 'rl-q-update',
+        kind: 'numeric',
+        question: 'Q(s, a) = 1. The agent takes a, receives r = −1, and lands in a state whose highest Q-value is 5. With α = 0.4 and γ = 0.9, what is the new Q(s, a)?',
+        answer: 2,
+        tolerance: 0.01,
+        explanation: 'target = −1 + 0.9 × 5 = 3.5; TD error = 3.5 − 1 = 2.5; new Q = 1 + 0.4 × 2.5 = 2.0.',
+      },
+      {
+        id: 'rl-discounted',
+        kind: 'numeric',
+        question: "An episode's rewards are −1, −1, +10, in that order. With γ = 0.9, what is the discounted return G from the start?",
+        answer: 6.2,
+        tolerance: 0.01,
+        explanation: 'G = −1 + 0.9 × (−1) + 0.9² × 10 = −1 − 0.9 + 8.1 = 6.2.',
+      },
+      {
+        id: 'rl-epsilon',
+        kind: 'multiple-choice',
+        question: 'What does the exploration rate ε control?',
+        choices: [
+          'How much future rewards count',
+          'The fraction of moves chosen at random instead of by the current best Q-value',
+          'How large each Q-update is',
+          'The size of the grid',
+        ],
+        correctIndex: 1,
+        explanation:
+          "ε trades exploration for exploitation: with probability ε the agent tries a random move, which is how it discovers routes its current Q-table doesn't yet favor. Future-reward weighting is γ, and update size is α.",
+      },
+      {
+        id: 'rl-challenge',
+        kind: 'numeric',
+        role: 'challenge',
+        question: "In the lab's gridworld, the shortest safe route from START to the goal takes 10 moves. What is the best possible undiscounted return an episode can achieve?",
+        answer: 1,
+        tolerance: 0.01,
+        explanation: "Nine ordinary moves at −1 each, then the tenth move enters the goal for +10: 9 × (−1) + 10 = +1. That's the ceiling in the lab — reached exactly once training is done and ε is set to 0.",
+      },
+    ],
+  },
 ];

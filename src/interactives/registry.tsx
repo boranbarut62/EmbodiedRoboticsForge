@@ -11,6 +11,9 @@ import { EncoderLab } from './EncoderLab';
 import { VisionLab } from './VisionLab';
 import { NeuronLab } from './NeuronLab';
 import { ROSGraphLab } from './ROSGraphLab';
+import { PendulumSimLab } from './PendulumSimLab';
+import { PathPlannerLab } from './PathPlannerLab';
+import { QLearningLab } from './QLearningLab';
 
 export const interactives: Record<string, ComponentType> = {
   VectorPlayground,
@@ -25,4 +28,7 @@ export const interactives: Record<string, ComponentType> = {
   VisionLab,
   NeuronLab,
   ROSGraphLab,
+  PendulumSimLab,
+  PathPlannerLab,
+  QLearningLab,
 };

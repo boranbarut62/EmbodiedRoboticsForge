@@ -39,4 +39,5 @@ Then open http://localhost:5173.
 The Roadmap shows all 15 planned stages. Stages with lessons so far include
 Foundations, Electronics, Embedded Systems, Mechanical Engineering, Robotics
 Fundamentals, Control Systems, Sensors & Perception, Computer Vision, Machine
-Learning, and ROS 2; the rest are marked "Coming Later".
+Learning, ROS 2, Simulation, Autonomous Robotics, and Robot Learning; the rest
+are marked "Coming Later".
