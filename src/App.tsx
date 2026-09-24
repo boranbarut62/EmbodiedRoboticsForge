@@ -5,6 +5,7 @@ import { Roadmap } from './pages/Roadmap';
 import { Learn } from './pages/Learn';
 import { Practice } from './pages/Practice';
 import { Progress } from './pages/Progress';
+import { ProjectDetail, ProjectsIndex } from './pages/Projects';
 
 function App() {
   return (
@@ -17,6 +18,8 @@ function App() {
           <Route path="/learn" element={<Learn />} />
           <Route path="/learn/:lessonId" element={<Learn />} />
           <Route path="/practice" element={<Practice />} />
+          <Route path="/projects" element={<ProjectsIndex />} />
+          <Route path="/projects/:projectId" element={<ProjectDetail />} />
           <Route path="/progress" element={<Progress />} />
         </Routes>
       </main>

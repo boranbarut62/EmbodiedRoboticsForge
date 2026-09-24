@@ -36,8 +36,15 @@ Then open http://localhost:5173.
 
 ## Current scope
 
-The Roadmap shows all 15 planned stages. Stages with lessons so far include
-Foundations, Electronics, Embedded Systems, Mechanical Engineering, Robotics
-Fundamentals, Control Systems, Sensors & Perception, Computer Vision, Machine
-Learning, ROS 2, Simulation, Autonomous Robotics, and Robot Learning; the rest
-are marked "Coming Later".
+All 15 roadmap stages have a lesson with its own interactive lab, from
+Foundations and Electronics through Control, Computer Vision, ROS 2,
+Simulation, Robot Learning, Embodied AI, and Humanoid Robotics.
+
+The **Projects** section (`src/data/projects.ts`) holds hands-on hardware builds
+with parts lists, safety notes, wiring tables, Arduino code, and per-step
+checkpoints whose completion is saved:
+
+1. **ESP32 Voltmeter** — ADC vs. multimeter: dividers, noise, calibration error,
+   and loading.
+2. **Light-Seeking Robot Head** — two LDRs, a servo, and a closed-loop
+   controller tuned on real hardware.

@@ -2061,4 +2061,339 @@ for episode in range(500):
       },
     ],
   },
+
+  {
+    id: 'embodied-agent-loop',
+    stageId: 'embodied-ai',
+    title: 'The Embodied Agent: Closing the Perception–Action Loop',
+    hook: "Everything in this course so far has been a piece: sensors, perception, state estimation, planning, learning, control, actuators. An embodied AI system is what you get when all of them run together, continuously, inside a body. The defining difference from an image classifier or a chatbot: an embodied agent's actions decide what it will perceive next.",
+    objectives: [
+      'Trace information through the full sense → perceive → model → decide → control → act loop.',
+      'Explain partial observability and why an agent needs a world model (memory).',
+      "Predict how field of view, sensor noise, and memory change an agent's behavior before testing them.",
+      'Derive the noise-versus-lag trade-off of a simple world-model update.',
+      'Place modern approaches — vision-language models and vision-language-action models — onto this loop.',
+    ],
+    sections: [
+      {
+        type: 'text',
+        kind: 'intuition',
+        heading: 'Why Embodiment Changes Everything',
+        body: [
+          'An image classifier receives a photo, outputs a label, and is done. An embodied agent is never done: every action moves its body, which changes what its camera sees next. It can turn to look behind an obstacle (active perception), it can lose sight of something it cares about (partial observability), and its mistakes compound over time instead of being scored once.',
+          "That is why embodied systems need more than a good detector. They need a world model — an internal estimate of the state of the world that persists when things go out of view — and a policy that decides not only how to reach a goal, but when to go and look for more information.",
+        ],
+      },
+      {
+        type: 'interactive',
+        heading: 'Embodied Agent Lab',
+        component: 'EmbodiedAgentLab',
+        caption:
+          'The robot must reach the orange ball. Drag the ball around — including behind the gray wall — and watch each stage of the loop update. Then turn memory off, narrow the field of view, raise the noise, or change the update gain K, and see how the behavior changes.',
+      },
+      {
+        type: 'exercise',
+        heading: 'Predict First',
+        exerciseId: 'eai-predict-memory',
+      },
+      {
+        type: 'key-concepts',
+        heading: 'Key Concepts',
+        items: [
+          'Partial observability: the state the agent needs is often out of view',
+          'World model (belief state): what the agent thinks is true, including things it cannot currently see',
+          'Active perception: choosing actions partly to gather information (turning to look)',
+          'Policy: the mapping from belief to action — hand-written here, learned in modern systems',
+          'Closed loop: actions change future observations, so errors and recoveries both compound',
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'math',
+        heading: 'A Minimal World Model',
+        body: [
+          "Each time perception reports a noisy detection z of the target's position, the agent updates its belief b with b ← b + K·(z − b), where 0 < K ≤ 1 is the update gain. K = 1 means 'believe the latest detection completely'; a small K means 'mostly trust what I already believed.'",
+          'This has exactly the form of the Kalman filter update. In a Kalman filter, K is computed at every step from how noisy the sensor is compared to how uncertain the belief already is; here it is a fixed setting you can tune.',
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'derivation',
+        heading: 'The Noise-versus-Lag Trade-off',
+        body: [
+          "Suppose the target is still and each detection carries independent noise with variance σ². In steady state, the belief's variance V must satisfy V = (1 − K)²V + K²σ²: the old belief's variance, shrunk by (1 − K)², plus the new detection's noise, weighted by K².",
+          'Solve for V: V·(1 − (1 − K)²) = K²σ², and since 1 − (1 − K)² = K(2 − K), V = K·σ² / (2 − K). With K = 1, V = σ² — no smoothing at all. With K = 0.2, V = σ²/9, so the belief is three times less noisy than any single detection.',
+          'The price is lag: when the target really moves, a small K needs many detections to catch up. Try dragging the ball quickly with K = 0.1, then with K = 1. This is the same trade-off as blurring in the Computer Vision lesson and averaging in the Encoder lesson — it keeps reappearing because it is fundamental.',
+        ],
+      },
+      {
+        type: 'worked-example',
+        heading: 'Worked Example',
+        body: 'A detector has σ = 12 px of noise and the world model uses K = 0.5. Steady-state belief variance = 0.5 × 144 / 1.5 = 48 px², so the belief\'s standard deviation is √48 ≈ 6.9 px — a bit over half the raw detection noise — while it still closes half the gap to each new detection.',
+      },
+      {
+        type: 'code',
+        heading: 'The Loop in Code',
+        language: 'Python (pseudocode)',
+        code: `belief = None                                   # world model: where we think the target is
+
+while True:
+    image = camera.read()                       # 1. SENSE
+    detection = detector(image)                 # 2. PERCEIVE (e.g. a CNN or a VLM)
+
+    if detection is not None:                   # 3. UPDATE THE WORLD MODEL
+        z = detection.position
+        belief = z if belief is None else belief + K * (z - belief)
+    elif belief is not None and reached(belief):
+        belief = None                           # it isn't where we remembered
+
+    if belief is None:                          # 4. DECIDE (the policy)
+        command = scan_in_place()               #    active perception: go look
+    else:
+        command = drive_toward(belief)          #    exploit what we believe
+
+    motors.apply(controller(command))           # 5-6. CONTROL + ACT`,
+        caption:
+          'This is the structure running in the lab. In modern embodied AI, learned models replace individual lines: the detector becomes a neural network, the policy may be trained with reinforcement or imitation learning, or a single large model may replace several stages at once.',
+      },
+      {
+        type: 'text',
+        kind: 'engineering',
+        heading: 'Where Foundation Models Fit',
+        body: [
+          "Vision-language models (VLMs) can serve as the perception and world-model stages: they recognize open-ended objects ('the blue mug on the left') and answer questions about a scene. Vision-language-action (VLA) models, such as Google DeepMind's RT-2, go further: one network takes camera images plus a language instruction and outputs robot actions directly, merging perception, world model, and policy into a single learned component.",
+          'Even then, a classical controller typically still runs underneath at a much higher rate, turning the model\'s commands into motor torques — and the lessons on control, state estimation, simulation, and sim-to-real still decide whether the system works on real hardware.',
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'robotics',
+        heading: 'The Whole Course in One Loop',
+        body: [
+          'Sense: Encoders, and sensor noise throughout. Perceive: Computer Vision and Machine Learning. World model: Vectors and coordinate frames, plus the filtering in this lesson. Decide: Path Planning and Reinforcement Learning. Control: Feedback Control and PWM. Act: Motor to Joint, Gears, and Torque. ROS 2 wires the stages together, and Simulation is where you test them safely.',
+          'Humanoid Robotics, the final stage, is this same loop running on the hardest body there is to control.',
+        ],
+      },
+    ],
+    exercises: [
+      {
+        id: 'eai-predict-memory',
+        kind: 'multiple-choice',
+        question: 'Memory is OFF. While the robot is approaching the ball, you drag the ball behind the wall. What will the robot do?',
+        choices: [
+          'Keep driving to where the ball was, then go around the wall',
+          'Immediately lose the ball and fall back to scanning in place',
+          'Stop moving entirely',
+          'Drive straight through the wall',
+        ],
+        correctIndex: 1,
+        explanation:
+          'Without a world model, the belief exists only while the ball is in view. The moment the wall blocks the line of sight, there is nothing left to act on, so the agent falls back to search. With memory on, it keeps driving toward the last place it saw the ball; if the ball is no longer there when it arrives, it discards that belief and starts searching from there — scanning, then moving to fresh vantage points.',
+      },
+      {
+        id: 'eai-belief-update',
+        kind: 'numeric',
+        question: 'The belief is at x = 100 px. A new detection reports x = 130 px. With K = 0.3, what is the updated belief?',
+        answer: 109,
+        tolerance: 0.5,
+        unit: 'px',
+        explanation: 'b ← b + K·(z − b) = 100 + 0.3 × (130 − 100) = 100 + 9 = 109 px.',
+      },
+      {
+        id: 'eai-active-perception',
+        kind: 'multiple-choice',
+        question: 'Which of these is an example of active perception?',
+        choices: [
+          'Averaging ten camera frames',
+          'A robot turning its head to look behind an obstacle before deciding where to go',
+          "Increasing a camera's resolution",
+          'Training a detector on more images',
+        ],
+        correctIndex: 1,
+        explanation: 'Active perception means choosing actions partly to gather information. The search behavior in the lab — rotating to scan — is exactly that.',
+      },
+      {
+        id: 'eai-partial',
+        kind: 'multiple-choice',
+        question: "Why does partial observability make a pure 'see it, then react' controller insufficient?",
+        choices: [
+          'Because sensors are too slow',
+          'Because the relevant state of the world is often out of view, so the agent must remember and estimate it',
+          "Because reactive controllers can't use cameras",
+          "Because the robot's motors need memory",
+        ],
+        correctIndex: 1,
+        explanation: 'A reactive controller can only act on what it sees right now. When the goal is hidden, only a world model lets the agent keep pursuing it.',
+      },
+      {
+        id: 'eai-challenge',
+        kind: 'numeric',
+        role: 'challenge',
+        question: "A detector's noise has σ = 9 px. What update gain K makes the belief's steady-state standard deviation exactly 3 px (variance 9 px²)?",
+        answer: 0.2,
+        tolerance: 0.01,
+        explanation: 'Set K·σ²/(2 − K) = 9 with σ² = 81: 81K = 9(2 − K) → 81K = 18 − 9K → 90K = 18 → K = 0.2.',
+      },
+    ],
+  },
+
+  {
+    id: 'humanoid-balance',
+    stageId: 'humanoid-robotics',
+    title: 'Humanoid Balance: Center of Mass, ZMP, and the Capture Point',
+    hook: 'A humanoid is the hardest body in this course to control: tall, top-heavy, standing on two small feet, and falling over by default. A wheeled robot is stable the moment it stops; a humanoid must actively balance every millisecond. This lesson builds the core physics that tells a humanoid whether it can recover from a push using its ankles — or whether it must take a step.',
+    objectives: [
+      'Explain the support polygon and the zero moment point (ZMP) intuitively.',
+      'Model a standing humanoid as a linear inverted pendulum.',
+      'Predict when a push can be absorbed at the ankles and when the robot must step.',
+      'Derive the capture point and show why it moves away from the ZMP exponentially.',
+      'Connect balance control to whole-body control and learned locomotion.',
+    ],
+    sections: [
+      {
+        type: 'text',
+        kind: 'intuition',
+        heading: 'Balancing on a Small Foot',
+        body: [
+          "Stand still and lean forward slowly: your toes press harder into the floor. The point where the floor's push on your feet effectively acts — the center of pressure — moves toward your toes. Lean too far and it reaches the tips of your toes. It cannot go any further, so you either step or fall.",
+          'Robotics calls this point the zero moment point (ZMP), and the region it can move within — the area under and between the feet touching the ground — the support polygon. Every balance controller, from simple ankle control to full-body optimization, is fundamentally about keeping the ZMP inside the support polygon.',
+        ],
+      },
+      {
+        type: 'interactive',
+        heading: 'Push-Recovery Lab',
+        component: 'HumanoidBalanceLab',
+        caption:
+          'Push the robot and watch the capture point (orange ×) and the ZMP (blue ▲). Turn stepping off and find the largest push the ankles alone can absorb. Then change the foot length and the center-of-mass height, and see how that limit moves.',
+      },
+      {
+        type: 'exercise',
+        heading: 'Predict First',
+        exerciseId: 'hum-predict-push',
+      },
+      {
+        type: 'text',
+        kind: 'math',
+        heading: 'The Linear Inverted Pendulum',
+        body: [
+          "Model the humanoid as its center of mass (CoM) at a constant height z_c, supported by a massless leg pivoting on the ZMP p. Gravity accelerates the CoM away from the point of support: ẍ = ω²(x − p), with ω = √(g / z_c). This is the linear inverted pendulum model.",
+          'When x is ahead of p, the CoM accelerates further ahead: the system is unstable by nature, like balancing a broomstick on your hand. The only thing a controller can move is p — and only within the support polygon.',
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'derivation',
+        heading: 'Deriving the Capture Point',
+        body: [
+          'Define the capture point ξ = x + ẋ/ω. Differentiate it: ξ̇ = ẋ + ẍ/ω = ẋ + ω(x − p) = ω(x + ẋ/ω − p) = ω(ξ − p).',
+          "That single first-order equation is the whole story. If the ZMP sits exactly at ξ, the capture point stands still and the CoM comes to rest above it — the robot is 'captured.' If ξ is inside the support polygon, the ankles can place the ZMP just beyond it and drive ξ back toward the foot.",
+          'But if ξ is outside the support polygon, ξ − p has the same sign wherever the ZMP goes, so ξ runs away exponentially at rate ω. No ankle torque can save it. The only escape is to move the support polygon: step, so the new foot lands under the capture point. That is exactly what the lab does when stepping is on.',
+        ],
+      },
+      {
+        type: 'worked-example',
+        heading: 'Worked Example',
+        body: "A humanoid's CoM is 0.9 m high, so ω = √(9.81 / 0.9) ≈ 3.30 s⁻¹. It stands with its CoM directly over its ankle when a push gives it ẋ = 0.5 m/s. The capture point is ξ = 0 + 0.5 / 3.30 ≈ 0.15 m ahead of the ankle. If its toe reaches only 0.10 m ahead of the ankle, the capture point is outside the foot: it must step about 0.15 m forward. A smaller push of 0.3 m/s gives ξ ≈ 0.09 m — inside the foot, so the ankles alone can recover.",
+      },
+      {
+        type: 'code',
+        heading: 'A Capture-Point Balance Rule',
+        language: 'Python',
+        code: `import math
+
+G = 9.81
+
+def capture_point(x, xdot, z_com):
+    omega = math.sqrt(G / z_com)
+    return x + xdot / omega
+
+def balance_tick(x, xdot, foot, half_length, z_com, k=2.0):
+    """Returns (zmp, must_step, next_foot) for one control tick."""
+    xi = capture_point(x, xdot, z_com)
+    lo, hi = foot - half_length, foot + half_length
+    zmp = min(max(foot + k * (xi - foot), lo), hi)   # push xi back toward the foot
+    if lo <= xi <= hi:
+        return zmp, False, foot                      # ankle strategy is enough
+    return zmp, True, xi                             # step: put the foot under xi`,
+        caption: 'The lab runs this rule 240 times per simulated second. Real humanoid controllers extend the same idea to 3D, two feet, and planned sequences of footsteps.',
+      },
+      {
+        type: 'text',
+        kind: 'engineering',
+        heading: 'From One Leg to a Whole Body',
+        body: [
+          'Real humanoids have two feet (in double support, the support polygon is the convex region spanning both), move in 3D, and use their arms while they balance. Whole-body controllers solve an optimization problem — often a quadratic program — every millisecond or so: find joint torques that keep the balance dynamics feasible while also tracking hand targets, respecting torque limits, and avoiding self-collision, with balance given the highest priority.',
+          'The hardware matters as much as the math. High-torque, back-drivable joint actuators — the torque and gearbox lessons again — let a humanoid absorb impacts instead of transmitting every jolt to its frame.',
+        ],
+      },
+      {
+        type: 'text',
+        kind: 'robotics',
+        heading: 'Where Humanoid Control Is Heading',
+        body: [
+          'Model-based walking plans footsteps with models like this one and tracks them with model-predictive control. Learned walking trains a neural-network policy with reinforcement learning across thousands of simulated robots, with domain randomization, then transfers it to hardware. Many modern humanoids combine both, and add vision-language-action models on top for high-level manipulation behavior.',
+          'Every stage of this course runs inside that robot: vectors and frames for kinematics, torque and gears in every joint, PWM-driven motor drivers, encoders feeding state estimation, feedback control at kilohertz rates, vision and learned perception, planning, and an embodied policy on top. You now have the map. The Projects section is where you start building.',
+        ],
+      },
+    ],
+    exercises: [
+      {
+        id: 'hum-predict-push',
+        kind: 'multiple-choice',
+        question: 'Stepping is OFF. You give a large push that puts the capture point beyond the toes. What happens?',
+        choices: [
+          'The ankles apply more torque and the robot recovers',
+          'The robot falls: the ZMP is stuck at the toes and the capture point keeps moving away',
+          'The robot slides backward',
+          "Nothing — the capture point doesn't matter without stepping",
+        ],
+        correctIndex: 1,
+        explanation:
+          'Once ξ is beyond the toes, the ZMP saturates at the toe and ξ̇ = ω(ξ − p) stays positive, so the capture point runs away exponentially. Without a step to move the support polygon, the robot falls.',
+      },
+      {
+        id: 'hum-omega',
+        kind: 'numeric',
+        question: "A humanoid's CoM height is 1.0 m. What is ω = √(g / z_c), with g = 9.81 m/s²?",
+        answer: 3.13,
+        tolerance: 0.02,
+        unit: 's⁻¹',
+        explanation: 'ω = √(9.81 / 1.0) ≈ 3.13 s⁻¹.',
+      },
+      {
+        id: 'hum-capture',
+        kind: 'numeric',
+        question: 'The CoM is directly over the ankle (x = 0), moving at ẋ = 0.3 m/s, with ω = 3 s⁻¹. How far ahead of the ankle is the capture point?',
+        answer: 0.1,
+        tolerance: 0.003,
+        unit: 'm',
+        explanation: 'ξ = x + ẋ/ω = 0 + 0.3 / 3 = 0.1 m.',
+      },
+      {
+        id: 'hum-crouch',
+        kind: 'multiple-choice',
+        question: 'Why does bending the knees (lowering the CoM) make it easier to recover from a push without stepping?',
+        choices: [
+          'It makes the robot heavier',
+          'A lower CoM increases ω, so the same push puts the capture point closer to the ankle',
+          'It makes the feet longer',
+          'It cancels the push force',
+        ],
+        correctIndex: 1,
+        explanation:
+          'The capture point sits ẋ/ω ahead of the CoM, and ω = √(g / z_c). Lowering z_c raises ω, which shrinks ẋ/ω for the same push. Try it with the CoM-height slider.',
+      },
+      {
+        id: 'hum-challenge',
+        kind: 'numeric',
+        role: 'challenge',
+        question:
+          'A humanoid with its CoM at 0.9 m is pushed to ẋ = 0.33 m/s while its CoM is over the ankle. What minimum toe length (ankle to toe) lets it recover with its ankles alone? (meters, two decimals)',
+        answer: 0.1,
+        tolerance: 0.005,
+        unit: 'm',
+        explanation: 'ω = √(9.81 / 0.9) ≈ 3.30 s⁻¹, so ξ = 0.33 / 3.30 ≈ 0.10 m. The toe must reach at least 0.10 m ahead of the ankle to keep the capture point inside the support polygon.',
+      },
+    ],
+  },
 ];

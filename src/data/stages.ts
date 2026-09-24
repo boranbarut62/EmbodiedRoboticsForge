@@ -98,14 +98,14 @@ export const stages: Stage[] = [
     id: 'embodied-ai',
     title: 'Embodied AI',
     domain: 'Perception, Planning & Action',
-    status: 'coming-later',
+    status: 'available',
     blurb: 'AI models that perceive, plan, and act inside a physical body.',
   },
   {
     id: 'humanoid-robotics',
     title: 'Humanoid Robotics',
     domain: 'Locomotion & Whole-Body Control',
-    status: 'coming-later',
+    status: 'available',
     blurb: 'Balance, gait, dexterous manipulation, and whole-body humanoid control.',
   },
 ];

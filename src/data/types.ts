@@ -94,3 +94,39 @@ export interface Lesson {
    *  a subset inline; the rest render as Guided Practice / Challenge at the end. */
   exercises: Exercise[];
 }
+
+export interface ProjectPart {
+  name: string;
+  quantity: string;
+  /** 'owned' = on the learner's purchase list; 'kit' = expected in the Arduino starter kit; 'extra' = not on the list. */
+  source: 'owned' | 'kit' | 'extra';
+  note?: string;
+}
+
+export interface ProjectStep {
+  id: string;
+  title: string;
+  body: string[];
+  wiring?: { from: string; to: string; note?: string }[];
+  code?: { language: string; code: string };
+  /** How to verify the step worked before moving on. */
+  checkpoint?: string;
+}
+
+export interface Project {
+  id: string;
+  title: string;
+  summary: string;
+  duration: string;
+  difficulty: string;
+  /** Lesson ids worth completing first. */
+  prerequisites: string[];
+  goals: string[];
+  parts: ProjectPart[];
+  tools: string[];
+  safety: string[];
+  steps: ProjectStep[];
+  experiments: string[];
+  reflection: string[];
+  extensions: string[];
+}

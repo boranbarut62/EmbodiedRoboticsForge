@@ -10,11 +10,14 @@ export interface ExerciseResult {
 export interface ProgressState {
   completedLessons: string[];
   exerciseResults: Record<string, ExerciseResult>;
+  /** Keyed `${projectId}:${stepId}`. */
+  projectSteps: Record<string, boolean>;
 }
 
 const defaultState: ProgressState = {
   completedLessons: [],
   exerciseResults: {},
+  projectSteps: {},
 };
 
 function readFromStorage(): ProgressState {
@@ -26,6 +29,7 @@ function readFromStorage(): ProgressState {
       completedLessons: Array.isArray(parsed.completedLessons) ? parsed.completedLessons : [],
       exerciseResults:
         parsed.exerciseResults && typeof parsed.exerciseResults === 'object' ? parsed.exerciseResults : {},
+      projectSteps: parsed.projectSteps && typeof parsed.projectSteps === 'object' ? parsed.projectSteps : {},
     };
   } catch {
     return defaultState;
@@ -69,6 +73,13 @@ export function recordExerciseAttempt(exerciseId: string, correct: boolean) {
     ...state,
     exerciseResults: { ...state.exerciseResults, [exerciseId]: { attempted: true, correct } },
   };
+  persist();
+  emit();
+}
+
+export function toggleProjectStep(projectId: string, stepId: string) {
+  const key = `${projectId}:${stepId}`;
+  state = { ...state, projectSteps: { ...state.projectSteps, [key]: !state.projectSteps[key] } };
   persist();
   emit();
 }

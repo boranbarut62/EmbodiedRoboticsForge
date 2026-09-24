@@ -7,6 +7,7 @@ const links = [
   { to: '/roadmap', label: 'Roadmap' },
   { to: '/learn', label: 'Learn' },
   { to: '/practice', label: 'Practice' },
+  { to: '/projects', label: 'Projects' },
   { to: '/progress', label: 'Progress' },
 ];
 

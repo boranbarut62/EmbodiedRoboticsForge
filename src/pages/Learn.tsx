@@ -1,5 +1,6 @@
 import { Navigate, Link, useParams } from 'react-router-dom';
 import { lessons } from '../data/lessons';
+import { projects } from '../data/projects';
 import { lessonById, stageById } from '../lib/derived';
 import { markLessonComplete, useProgress } from '../lib/progress';
 import { ExerciseCard } from '../components/ExerciseCard';
@@ -52,6 +53,18 @@ export function Learn() {
               </li>
             );
           })}
+        </ul>
+        <h2 className="lesson-sidebar-title" style={{ marginTop: 16 }}>
+          Projects
+        </h2>
+        <ul className="lesson-list">
+          {projects.map((p) => (
+            <li key={p.id}>
+              <Link to={`/projects/${p.id}`} className="lesson-list-link">
+                {p.title}
+              </Link>
+            </li>
+          ))}
         </ul>
       </aside>
 

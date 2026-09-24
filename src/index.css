@@ -514,6 +514,68 @@ a { color: var(--accent); }
   background: #000;
 }
 
+.pipeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pipeline-stage {
+  flex: 1 1 140px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  background: var(--surface);
+}
+
+.pipeline-stage-active {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.pipeline-stage-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+
+/* Projects */
+
+.safety-card {
+  border-color: #e0a100;
+  background: rgba(224, 161, 0, 0.08);
+}
+
+.safety-card .section-eyebrow {
+  color: #b37f00;
+}
+
+.checkpoint {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--accent-bg);
+  font-size: 14px;
+}
+
+.step-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.step-done {
+  border-color: var(--green);
+}
+
 /* Numeric exercise input */
 
 .exercise-numeric {

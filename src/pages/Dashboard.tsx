@@ -41,6 +41,14 @@ export function Dashboard() {
       </section>
 
       <section className="card">
+        <h2>Hands-On Projects</h2>
+        <p>Two real builds using your ESP32, OLED, resistors, and multimeter — from a first soldered joint to a closed-loop, light-seeking robot head.</p>
+        <Link className="btn btn-primary" to="/projects">
+          Open Projects
+        </Link>
+      </section>
+
+      <section className="card">
         <h2>Active Stages</h2>
         <ul className="plain-list">
           {availableStages.map((stage) => (

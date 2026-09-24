@@ -14,6 +14,8 @@ import { ROSGraphLab } from './ROSGraphLab';
 import { PendulumSimLab } from './PendulumSimLab';
 import { PathPlannerLab } from './PathPlannerLab';
 import { QLearningLab } from './QLearningLab';
+import { EmbodiedAgentLab } from './EmbodiedAgentLab';
+import { HumanoidBalanceLab } from './HumanoidBalanceLab';
 
 export const interactives: Record<string, ComponentType> = {
   VectorPlayground,
@@ -31,4 +33,6 @@ export const interactives: Record<string, ComponentType> = {
   PendulumSimLab,
   PathPlannerLab,
   QLearningLab,
+  EmbodiedAgentLab,
+  HumanoidBalanceLab,
 };
